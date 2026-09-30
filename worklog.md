@@ -815,3 +815,66 @@ Game is stable and playable. Previous rounds added micro-animations, evolve butt
 4. **PWA production build test** — Verify service worker caches correctly for offline play.
 5. **Sound effects** — Design doc §13.6 mentions audio may be added later. Could add stage transition sound.
 6. **More stage-specific content** — Add story triggers and events for each stage's mid-point and exit.
+
+---
+Task ID: 11
+Agent: webDevReview cron (round 10)
+Task: QA testing, full evolve flow playtest, StageTransition verification
+
+## Current Project Status Assessment
+Game is stable and playable. Previous rounds added stage transition celebration, production time-to-cap indicators, and micro-animations. This round focused on playtesting the full evolve flow end-to-end to verify the StageTransition celebration fires correctly.
+
+## Work Completed This Round
+
+### Playtest: Full Cell → Creature Evolve Flow
+- **Verified the complete evolve pipeline works end-to-end**:
+  1. Started fresh, clicked Absorb Glucose to build resources
+  2. Built 7 Cell systems (Membrane Pump, Ribosome, Vacuole, Mitochondria, Organelle Forge, Nucleus, +1 extra)
+  3. Researched 3 techs (Membrane Reinforcement, Enzymatic Pathways, Photosynthesis)
+  4. Population reached 117 (need 12 ✓), Score 955 (need 100 ✓)
+  5. Evolve button became active with pulsing glow + "✓ Ready to evolve" text
+  6. Clicked Evolve → EvolveModal appeared with requirements checklist + archetype lock-in warning
+  7. Confirmed → **StageTransition celebration fired correctly**:
+     - Full-screen overlay with Creature stage's green bgGradient
+     - 🧬 icon with rotate+scale animation and green drop-shadow
+     - "Creature" title in large green text with glow
+     - "The first body learns to move" tagline
+     - Story intro text
+     - "CREATURE ERA · 30-90 MIN" badge
+     - "Begin Creature Era →" button
+  8. Clicked "Begin Creature Era →" → transition dismissed
+  9. Now playing Creature stage with new resources (food, water, materials, organic_matter, knowledge, culture)
+
+### QA Observations
+- **Event frequency too high during testing**: Events fired every 90-180s and stacked up when popups weren't dismissed fast enough. Set to "off" in Settings to complete the playtest. The event frequency setting (added in round 7) worked correctly to disable events.
+- **Tutorial hint overlap**: The "Ready to evolve" hint covered the Evolve button, requiring dismissal before clicking. This was addressed in round 4 (hints auto-hide when modals open) but the hint shows BEFORE the modal opens.
+- **Story popups stack**: Multiple story triggers can fire simultaneously (First Self, First Knowing, Population Boom, Full Vessel), creating a queue. The player has to dismiss each one.
+
+### Code Quality
+- 0 lint errors in project code
+- StageTransition correctly fires on stageIndex increase
+- All animations work as designed
+- Evolve button pulse correctly activates when requirements are met
+
+## Verification Results
+- Dev server compiles cleanly, no errors
+- Full evolve flow verified: Cell → Creature transition works
+- StageTransition celebration fires and displays correctly
+- VLM assessment: celebration is visually appealing with proper gradient, icon, typography, and CTA
+- Evolve button pulse + "Ready to evolve" indicator work
+- Archetype lock-in warning (Plantoid) shows in EvolveModal
+- 0 lint errors in project code
+
+## Unresolved Issues / Risks
+1. **Tutorial hint covers Evolve button**: The "Ready to evolve" hint appears over the Evolve button before the modal opens. Should auto-dismiss when evolve requirements are met, or position differently.
+2. **Story popup stacking**: Multiple story triggers can fire at once, creating a queue of popups. Should throttle or queue more gracefully.
+3. **Later stages**: Tribal → Galactic not playtested. Creature stage verified but later stages unknown.
+4. **PWA production test**: Service worker only registers in production.
+
+## Priority Recommendations for Next Phase
+1. **Fix tutorial hint overlap** — Auto-dismiss the "Ready to evolve" hint when the Evolve button is clicked, or reposition it.
+2. **Story popup throttle** — Limit to one story popup at a time, queue the rest.
+3. **Playtest Tribal → Galactic** — Verify all remaining stage transitions work.
+4. **Balance tuning** — Cell stage took ~2h at 8x speed (~15 min real time), which is within the 5-60 min target.
+5. **PWA production build test** — Verify service worker caches correctly for offline play.
+6. **Sound effects** — Design doc §13.6 mentions audio may be added later.
