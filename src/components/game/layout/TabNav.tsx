@@ -1,0 +1,98 @@
+"use client";
+
+import { useGameStore } from "@/game/state/store";
+import type { TabId } from "@/game/state/types";
+import { cn } from "@/lib/utils";
+import {
+  Hand,
+  Building2,
+  Factory,
+  FlaskConical,
+  BookOpen,
+  ScrollText,
+  Archive as ArchiveIcon,
+  ListTree,
+  Store,
+} from "lucide-react";
+
+const TABS: { id: TabId; label: string; icon: React.ReactNode; mobile?: boolean }[] = [
+  { id: "actions", label: "Actions", icon: <Hand className="w-4 h-4" /> },
+  { id: "systems", label: "Systems", icon: <Building2 className="w-4 h-4" /> },
+  { id: "production", label: "Production", icon: <Factory className="w-4 h-4" /> },
+  { id: "tech", label: "Tech", icon: <FlaskConical className="w-4 h-4" /> },
+  { id: "story", label: "Story", icon: <BookOpen className="w-4 h-4" /> },
+  { id: "codex", label: "Codex", icon: <ScrollText className="w-4 h-4" /> },
+  { id: "archive", label: "Archive", icon: <ArchiveIcon className="w-4 h-4" /> },
+  { id: "log", label: "Log", icon: <ListTree className="w-4 h-4" /> },
+];
+
+export function TabNav() {
+  const currentTab = useGameStore((s) => s.currentTab);
+  const setTab = useGameStore((s) => s.setTab);
+  const setShowShop = useGameStore((s) => s.setShowShop);
+  const evolutionPoints = useGameStore((s) => s.evolutionPoints);
+
+  return (
+    <>
+      {/* Desktop tab bar */}
+      <div className="desktop-only sticky top-[57px] z-20 glass-strong border-b border-border">
+        <div className="max-w-7xl mx-auto px-2 sm:px-4 flex items-center gap-1 overflow-x-auto no-scrollbar py-1.5">
+          {TABS.map((tab) => (
+            <button
+              key={tab.id}
+              onClick={() => setTab(tab.id)}
+              className={cn("tab-btn", currentTab === tab.id && "active")}
+            >
+              {tab.icon}
+              <span>{tab.label}</span>
+            </button>
+          ))}
+          <div className="flex-1" />
+          {evolutionPoints > 0 && (
+            <button
+              onClick={() => setShowShop(true)}
+              className="tab-btn"
+              style={{ color: "rgb(252 211 77)" }}
+            >
+              <Store className="w-4 h-4" />
+              <span>Shop · {evolutionPoints} EP</span>
+            </button>
+          )}
+        </div>
+      </div>
+
+      {/* Mobile bottom nav */}
+      <nav className="mobile-only sticky-footer glass-strong border-t border-border">
+        <div className="flex items-center justify-around py-1 px-1">
+          {TABS.slice(0, 4).map((tab) => (
+            <button
+              key={tab.id}
+              onClick={() => setTab(tab.id)}
+              className={cn(
+                "flex flex-col items-center gap-0.5 px-2 py-1 rounded-md text-[0.6rem] font-medium transition-colors",
+                currentTab === tab.id ? "text-foreground bg-muted/40" : "text-muted-foreground"
+              )}
+            >
+              <span className="w-5 h-5 flex items-center justify-center">
+                {tab.icon}
+              </span>
+              {tab.label}
+            </button>
+          ))}
+          <button
+            onClick={() => setTab("story")}
+            className={cn(
+              "flex flex-col items-center gap-0.5 px-2 py-1 rounded-md text-[0.6rem] font-medium transition-colors",
+              currentTab === "story" ? "text-foreground bg-muted/40" : "text-muted-foreground"
+            )}
+          >
+            <span className="w-5 h-5 flex items-center justify-center">
+              <BookOpen className="w-4 h-4" />
+            </span>
+            More
+          </button>
+        </div>
+      </nav>
+    </>
+  );
+}

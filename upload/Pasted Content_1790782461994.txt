@@ -1,0 +1,830 @@
+________________________________________
+Evolution Idle - Complete Design Document
+Version 1.0 | Last Updated: 2024-12
+________________________________________
+1. Executive Summary
+1.1 Vision Statement
+Evolution Idle is a narrative-driven incremental game about a god awakening, growing through observation of life, and ultimately deciding what kind of universe deserves to exist forever. Players guide civilization from single-cell organisms to galactic transcendence across 7 stages and 10 divine layers, balancing active engagement with idle progression.
+1.2 Core Pillars
+1.	Narrative as Reward - Story is earned through progression, not given freely
+2.	Meaningful Choices - Every decision shapes the run and the god's identity
+3.	Depth Through Layers - Each layer adds new mechanics without invalidating previous ones
+4.	Idle + Active - Both playstyles are equally valid and supported
+1.3 Target Audience
+•	Fans of incremental/idle games (Cookie Clicker, Kittens Game, Realm Grinder)
+•	Players who enjoy narrative-driven games with cosmic themes
+•	Completionists who want to unlock everything
+________________________________________
+2. Core Loop
+2.1 Run Structure
+•	Start: Always begins at Cell stage
+•	Progression: Move through 7 stages (Cell → Creature → Tribal → Civilization → Empire → Solar → Galactic)
+•	End: Galactic victory screen + unlock first prestige layer
+•	Meta: Shop upgrades accelerate future runs; automation can eventually make runs fully idle
+2.2 Flow
+Run Start (Cell)
+    ↓
+Stage 1: Cell (5-60 min)
+    ↓
+Stage 2: Creature (30-90 min)
+    ↓
+Stage 3: Tribal (60-120 min)
+    ↓
+Stage 4: Civilization (120-180 min)
+    ↓
+Stage 5: Empire (120-180 min)
+    ↓
+Stage 6: Solar (3-5 hours)
+    ↓
+Stage 7: Galactic (6-24 hours)
+    ↓
+Victory → Layer 1 Unlocked
+    ↓
+Repeat with new mechanics
+2.3 Progression Speeds (Active Play)
+Stage	Target Time	Max Time
+Cell	5 min	60 min
+Creature	30 min	90 min
+Tribal	60 min	120 min
+Civilization	120 min	180 min
+Empire	120 min	180 min
+Solar	3 hours	5 hours
+Galactic	6 hours	24 hours
+With full shop optimization, all stages become near-instant
+2.4 Offline Progression
+•	System: Full simulation with banked time cap
+•	Base Bank: 24 hours
+•	Shop Upgrade: Temporal Reserves (adds +24 hours per tier, infinite purchases)
+•	Behavior: On return, game simulates all ticks at max speed compression
+•	Summary: "You were away for X hours" showing resources gained, milestones, auto-resolved events
+2.5 Failure States
+Each stage has potential failure conditions:
+•	Cell: Resource starvation (ATP/glucose/proteins)
+•	Creature: Population collapse, food/water exhaustion
+•	Tribal: Rebellion, food shortage
+•	Civilization: Civil war, happiness collapse
+•	Empire: Dark Age (regression), logistics failure
+•	Solar: Colony cascade failure
+•	Galactic: Schism, ascension collapse
+Failure = Run ends, shows summary screen, player can start new run
+________________________________________
+3. The 7 Stages
+3.1 Cell Stage
+Tone: Isolation, wonder, struggle
+Duration: 5-60 minutes (active)
+Core Mechanics:
+•	ATP-first survival
+•	Organelle purchase unlocks new resources
+•	Radar graph shows emerging lineage
+•	First run includes tutorial
+Key Systems:
+•	Manual actions: Absorb Glucose, Scavenge Proteins, Collect Lipids, Extract Elements
+•	Automation: Membrane Pump, Ribosome, Vacuole, Mitochondria
+•	Progression gate: Must build Nucleus and 8+ organelles to evolve
+Tutorial: Only on first run, covers ATP, organelles, score target
+New Player Experience: Gentle introduction, wonder-focused narrative
+3.2 Creature Stage
+Duration: 30-90 minutes (active)
+Core Mechanics:
+•	Body plan development
+•	Food/water become primary resources
+•	Population management
+•	Knowledge and culture introduced
+Lineage Lock System:
+•	Purchases made during stage shift lineage radar
+•	Lineage is locked at stage exit (cannot change after evolution)
+•	First run: lineages appear as "???" until locked
+•	Subsequent runs: revealed lineages show names for easier targeting
+Narrative: First body, hunger, thirst, fear, movement, instinct
+3.3 Tribal Stage
+Duration: 60-120 minutes (active)
+Core Mechanics:
+•	Villages and settlement building
+•	Population management becomes meaningful
+•	Resource conversion (wood→lumber, etc.)
+•	Happiness becomes active mechanic
+Happiness System:
+•	Affects production (low = debuff, high = buff)
+•	Too low triggers rebellion → potential failure state
+•	Luxury resources improve happiness
+•	Culture works with happiness and population growth
+3.4 Civilization Stage
+Duration: 120-180 minutes (active)
+Core Mechanics:
+•	Cities and urbanization
+•	Production, gold, formal research
+•	Government and law
+•	Formal military
+Culture: Not just a resource; required for tech unlocks, affects happiness and population growth
+3.5 Empire Stage
+Duration: 120-180 minutes (active)
+Core Mechanics:
+•	Multiple regions on a single world
+•	Logistics and administration
+•	Rivals become active (background pressure)
+•	Gilded Age possible (big bonuses)
+•	Dark Age possible (regression, failure state if mismanaged)
+3.6 Solar Stage
+Duration: 3-5 hours (active)
+Core Mechanics:
+•	Multiple planets for colonization
+•	Energy, alloys, and data become primary
+•	FTL choice mechanic
+FTL System:
+•	Tech tree leads to 3 options that each have their own subtrees
+•	Only one choice can be made in the end, but all subtrees can be completed
+•	Final FTL options: Warp Lensing, Hyperlane Resonance, Wormhole Apertures
+Scale Shift: No longer one planet, but many worlds
+3.7 Galactic Stage
+Duration: 6-24 hours (active)
+Core Mechanics:
+•	Interstellar civilization
+•	Megastructures
+•	Multiple ascension paths
+Victory Options (5 paths × 2 alignment variants = 10 endings):
+Path	Compassionate	Tyrannical
+Biological	Life elevated into something transcendent	Weak consumed to fuel the perfect organism
+Synthetic	Consciousness liberated from suffering	All free will compiled away
+Psionic	A unified dream of peace	A hivemind that can never be escaped
+Energetic	Civilization dissolves into light, feeds the cosmos	God harvests civilization as fuel
+Dimensional	Civilization steps beyond this universe	God tears open reality, discards what it built
+What unlocks: First prestige layer (Evolution Challenges)
+Why replay: Each subsequent playthrough pushes player closer to next layer
+________________________________________
+4. The 10 Layers
+4.1 Evolution Layer
+Story: The god is barely conscious, testing life through hardship
+Unlock: First Galactic Win
+Mechanics:
+•	35 Challenges (5 per stage)
+•	Completion of at least one per stage is required to unlock next layer
+•	Permanent mastery bonuses for each completed challenge
+Challenge Families (10 total):
+Family	Focus	Stages
+Growth	Population pressure	All
+Food	Food/water scarcity	All
+Happiness	Morale pressure	All
+Science	Knowledge pressure	All
+Production	Industry pressure	Tribal+
+Military	Command pressure	Empire+
+Speed	Time pressure	All
+Archetype	Lineage pressure	Creature+
+Low Resource	Resource scarcity	Early stages
+Late Stage	Galactic pressure	Galactic
+Challenge Distribution (5 per stage):
+Stage	Challenge Focuses
+Cell	speed, low-resource, metabolic, lineage emergence, survival collapse
+Creature	growth, food/water, happiness/morale, population scaling, beast threat
+Tribal	science, archetype, food/water, military stability, happiness rebellion
+Civilization	happiness, production, science, civic speed, culture threshold
+Empire	military stability, low-resource, science, logistics, rival pressure
+Solar	FTL, orbital famine, solar velocity, colonization, ascension tension
+Galactic	late-stage apocalypse, rare archetype, final silence, ascension competition, congress crisis
+Persistence: Mastery bonuses are permanent across all runs
+4.2 Enlightenment Layer
+Story: The god becomes self-aware, begins interpreting reality
+Unlock: Complete at least one of the Evolution Challenges per stage
+Mechanics:
+•	Divinity as foresight currency (earned through strong runs)
+•	Foresight nodes reveal future information
+•	Route control and planning
+•	Pressure prediction
+Divinity Earned Via:
+•	Efficient stage clears
+•	Route adherence
+•	Clean crisis handling
+•	Successful completion of key stage objectives
+Foresight Powers:
+•	Reveal future pressure points
+•	Preview later-stage bottlenecks
+•	Surface hidden route synergies
+•	Expose rival tendencies
+•	Highlight important resource chains
+•	Strengthen chosen long-term route (growth, conquest, harmony, wealth, or transcendence)
+Failure: Wrong predictions, wasted foresight possible
+Persistence: Divinity generation becomes permanent in future cycles after layer mastery
+4.3 Transcendence Layer
+Story: The god steps outside creation, draws power from sacrifice
+Unlock: Complete all Divinity foresight nodes + all required route archetypes
+Mechanics:
+•	Offerings (sacrifice run output → Divinity)
+•	Rituals (expensive one-time interventions)
+•	Scripts (conditional automated divine behaviors)
+Offerings:
+•	Sacrifice excess production, surplus resources, stabilized infrastructure, or population
+•	Tension between mortal progress and divine ascent
+•	Blood Pact = population sacrifice (dark option)
+Rituals:
+•	Direct, instant results
+•	Can get tech or buildings the player hasn't unlocked
+•	Expensive but powerful
+•	Examples: stabilize collapsing stage, force open future unlock, resolve pressure spike, short-term surge
+Scripts:
+•	Set-and-forget (editable at will)
+•	Conditional divine behaviors
+•	Examples: trigger rite when happiness crashes, convert resource when deficits begin, protect during crisis
+Emotional Cost: Sacrifice feels meaningful (player is sacrificing their civilization's lifeblood or population itself)
+Persistence: Offerings become permanent meta-source; scripts persist as reusable divine logic after layer mastery
+4.4 Genesis Layer
+Story: The god stops inheriting universes and begins authoring them
+Unlock: Master every ritual category + complete "transcendent run" built around Offerings
+Mechanics:
+•	World creation (character creator-style UI) with additional customizations unlocked each run
+•	Cradle Worlds, Prime Conditions, Sacred Geography, Dormant Seeds
+•	EP modifier tradeoff (harder worlds = more points)
+World Creation Components:
+1.	Cradle World (choose one): oceanic, arid, toxic, glacial, lush, volcanic, subterranean, crystalline, exotic
+2.	Prime Conditions (choose one): abundant water, unstable climate, rich minerals, weak gravity, fungal bloom, sparse biosphere
+3.	Sacred Geography (shape map): landmarks, dead zones, natural wonders, ruins, rich regions
+4.	Dormant Seeds (hidden in world): relics, ancient projects, ruins, mythic conditions that awaken later
+World Difficulty & EP Modifier:
+•	Easy worlds: 0.7x EP (lush, abundant water)
+•	Normal worlds: 1.0x EP (balanced choices)
+•	Hard worlds: 1.6x EP (toxic, sparse biosphere)
+•	Maximum extreme: ~2.5x EP
+•	Modifier displayed during world creation
+Save Slots: 3 world configurations; shop can expand
+World Choice Impact: Can change a run in very intense ways (e.g., building a world with no possibility for agriculture)
+Persistence: Full world-authoring suite becomes permanent between runs after layer mastery
+4.5 Apotheosis Layer
+Story: Civilization discovers the god; worship becomes governance
+Unlock: Complete all required world origins + awaken all seed categories
+Mechanics:
+•	Divine Laws (spend Divinity to change fundamental rules)
+•	Worship Mode (civilization's relationship with god)
+•	Miracles (limited dramatic control tools)
+•	Heresy Management (competing interpretations)
+Divine Laws (spend Divinity to enact):
+•	Example: no need for luxuries to maintain happiness
+•	Example: farming people for food/water (dark option)
+•	Fundamental rule changes, not just buffs
+Worship Modes (choice affects gameplay structurally):
+Mode	Effect
+Devotion	Gratitude and steady service; happiness-focused
+Fear	Divine judgment; low happiness doesn't hurt production
+Duty	Law, order, institutional continuity
+Mystery	Signs, symbols, impossible whispers
+Transaction	Covenant and exchange
+Transcendence	Ascent itself as the highest sacred act
+Miracles (limited, dramatic):
+•	Bless Harvests
+•	Sanctify Expansion
+•	Declare Jubilee
+•	Curse Dissent
+•	Apocalypse Rite
+Heresy:
+•	Random and chaotic (unless Divinity spent for foresight)
+•	Competing interpretations of the god emerge
+•	Responses: Suppress, Absorb, Legalize, Weaponize
+•	Failure: Heresy out of control = run ends (summary screen)
+Story: The god ceases to be hidden. Central question becomes not whether the world is guided, but how it worships.
+Persistence: Chosen law slots and worship structures become permanent meta-build options after layer mastery
+4.6 Singularity Layer
+Story: The god enters the system; reality thinks in the shape of the god's will
+Unlock: Master law, worship, miracle, and heresy systems through successful runs
+Mechanics:
+•	Relic Loadouts (pre-run choices with upside/downside)
+•	Compression (skip mastered stages with set builds)
+•	Logic Cores (advanced automation priorities)
+Relics (vs Artifacts = same thing, name TBD):
+•	Each relic: one large upside, one meaningful downside, one special interaction
+•	Define how a run feels (not just stat sticks)
+Compression:
+•	Optional (costs Divinity)
+•	Skip stages with a "what would have been" build
+•	Allows focus on higher-level decisions
+Logic Cores:
+•	Advanced automation behaviors (not simple toggles)
+•	Priorities: growth, stability, conquest, science, trade, faith
+•	Directional machine minds that decide allocation
+Persistence: Relic loadouts and compression settings become permanent run templates after layer mastery
+4.7 Omnipotence Layer
+Story: The god rewrites reality; fusion of incompatible truths threatens collapse
+Unlock: Complete a full set of hybridized runs + survive maximum-instability mastery
+Mechanics:
+•	Hybrid Lineage (sustain multiple archetypes)
+•	Instability (rises from conflicting hybrid choices)
+•	Rule Rewrites (narrow exemptions or conversion laws)
+Hybrid Lineage:
+•	Mix any two lineages (specific combos have hidden set bonuses)
+•	Shop can eventually allow all lineages at once
+•	Conflicts between lineage techs/buildings cause instability
+Instability:
+•	Caused by conflicting hybrid choices
+•	Failure: Instability too high = run ends (summary screen)
+•	Managed by careful hybridization
+Persistence: Hybrid slots and instability management tools become permanent after layer mastery
+4.8 Divinity Layer
+Story: The god becomes a true cosmic presence; creation bends around how it's perceived
+Unlock: Master every mask, polarity, and prayer channel
+Mechanics:
+•	Prayer Routing (direct worship output into channels)
+•	Divine Masks (how the world interprets the god)
+•	Worship Polarity (devotion, fear, awe, ambition, mystery)
+Prayer Routing:
+•	Dashboard/slider system
+•	Route prayer forms into different divine channels
+•	Each route empowers different systems (miracles, society, relics, laws, eternal projects)
+•	Prayer channels: growth, harmony, conquest, wealth, knowledge, transcendence
+Divine Masks (changes how world interprets god):
+Mask	Worship Generated	Dominant Events/Laws
+Radiant Sovereign	Glory, order	Growth, harmony
+Hidden Architect	Curiosity, structure	Knowledge
+Devouring Judge	Fear, obedience	Conquest
+Nurturing Creator	Gratitude, hope	Growth
+Cold Lawgiver	Duty, precision	Harmony
+Trickster Star	Wonder, ambition	Wealth, transcendence
+Mask Change Cost: 500 Divinity aggregate (mid-run, achievable)
+•	Locked unless massive Divinity channeled
+•	Resets prayer routing to new mask's default
+Persistence: Prayer-routing presets and divine identity loadouts become permanent after layer mastery
+4.9 Infinity Layer
+Story: The god becomes unbound from linear time; curates many possible histories
+Unlock: Master all recursive-history systems + complete integrated Infinity run
+Mechanics:
+•	Echoes (passive bonuses from old runs)
+•	Forks (ghost projections of decisions)
+•	Future Debt (borrow power, pay back with interest)
+Echoes:
+•	Ghost civilizations or divine residues from completed runs
+•	Passive bonuses: science, stability, military, trade, faith, exploration
+•	Bind limited number into new run
+•	Creates recursive identity
+Forks (simplified - no parallel game):
+•	Designate one major upcoming decision as "forked"
+•	Game plays out two ghost projections (simulated outcome trajectories)
+•	Compare panel shows both paths developing
+•	Commit to one branch; discarded branch gives small passive bonus (knowledge of road not taken)
+•	Window: ~30 seconds real-time but the length of that window grows with each run
+Future Debt:
+•	Borrow strength from future run now
+•	Intense penalties in all future runs until repaid with interest
+•	Can be paid off over multiple runs
+Persistence: Echo libraries and selected historical branches remain available forever after layer mastery
+4.10 Eternity Layer
+Story: The god stops seeking power; answers what deserves to be eternal
+Unlock: Complete full Testament + validate through final Eternity run
+Mechanics:
+•	Divine Testament (clauses that define reality)
+•	Canonization (declare events/truths as permanent)
+•	Permanence Weaves (pin laws/traits through resets)
+•	Universe Preservation vs Reset
+Divine Testament:
+•	Clauses written by player that alter fundamental reality
+•	Each clause defines what societies value (growth, law, harmony, conquest, memory, faith, suffering, abundance, transcendence)
+•	More clauses = more coherent, but more predetermined
+•	Goal: complete the full Testament without contradiction collapse
+Canonization:
+•	Declare specific events, achievements, lineages, miracles, cities, relics, archetypes, outcomes as canon
+•	Canonized things become permanent truths of future reality
+Permanence Weaves:
+•	Pin specific laws, traits, doctrines, systems, or identities
+•	Survive otherwise total resets
+Ending Choice:
+Option	What Happens	Reward
+Preserve Universe	Keep playing in Eternity layer forever	Full completion status
+Reset Universe	Reset entire game (all stages and layers)	Stacking cosmic bonus
+Cosmic Boons (Player gets a selection of 3 random bonuses and can choose one per reset, stacks infinitely):
+Boon	Effect
+Double Production	All production doubled
+Halved Costs	System/tech costs halved
+Double Game Speed	Universe moves twice as fast
+Double Population Growth	Population growth doubled
+Double Capacity Growth	Storage grows much faster
+Double Divinity Gain	Divinity accumulates at 2x
+Double Offering Gain	Offerings convert more abundance
+Earlier Automation	Automation unlocks sooner
+Extra Relic Slot	+1 relic loadout slot
+Extra Lineage Slot	+1 hybrid lineage slot
+Extra Law Slot	+1 active law
+Extra Miracle Charge	+1 miracle storage
+Post-Eternity Unlock: Fantasy Mode (cosmetic text swap)
+Fantasy Mode:
+•	Session-level toggle (not permanent)
+•	Unlocked from cosmetics shop after Eternity
+•	Replaces archetypes with fantasy equivalents (elves, goblins, angels, undead, dragons, fairies, etc.)
+•	Replaces tech/buildings with magic-themed equivalents
+•	Replaces stages (Solar → Spirit Planes, Galactic → Divine Realms)
+•	No mechanical changes, purely cosmetic
+•	Journal/Archive entries preserve mode used during that run
+Ultimate Reward:
+•	Full final story
+•	Credits
+•	Final summary screen of all runs
+•	"Thanks for playing" with link to feedback form
+•	Special cosmetics shop
+________________________________________
+5. Resource System
+5.1 Primary Resources (by Stage)
+Stage	Resources
+Cell	ATP, Glucose, Proteins, Lipids, Elements
+Creature	Food, Water, Materials, Organic Matter, Knowledge, Culture
+Tribal	Food, Water, Wood, Lumber, Stone, Clay, Science, Culture, Happiness, Military Power, Strategic Total, Luxury Total
+Civilization	Food, Water, Production, Gold, Science, Culture, Happiness, Military Power, Strategic Total, Luxury Total
+Empire	Food, Production, Gold, Science, Culture, Influence, Happiness, Military Power, Strategic Total, Luxury Total
+Solar	Food, Water, Production, Energy, Alloys, Science, Culture, Influence, Happiness, Strategic Total, Luxury Total
+Galactic	Food, Production, Energy, Alloys, Science, Data, Culture, Influence, Happiness, Military Power, Strategic Total, Luxury Total
+5.2 Secondary Resources (Unlocked Later)
+•	Tourism, Diplomacy, Rare Matter, Biomass, Medicine, Pollution, Terraforming, Unity, Logistics, Colonies, Command, Cohesion, Ascension, Faith
+5.3 Divinity Channels (Enlightenment+)
+•	Divinity Growth, Divinity Harmony, Divinity Conquest, Divinity Wealth, Divinity Knowledge, Divinity Transcendence
+•	Aggregated as "Divinity" for spending
+5.4 Resource Behavior
+•	Happiness: Affects production (low = debuff, high = buff); triggers rebellion if too low
+•	Culture: Works with happiness and population growth; required for some tech unlocks
+•	Strategic/Luxury: Aggregated categories with sub-resource breakdowns (visible on hover)
+________________________________________
+6. Narrative System
+6.1 Delivery Methods
+1.	Dialog Boxes: For major story moments (stage transitions, layer unlocks)
+2.	Journal Tab: Complete unlocked story, viewable anytime
+3.	Story Popups: First-time events (stage arrivals, first FTL, first miracle)
+4.	Environmental: Theme changes, UI elements that reflect narrative state
+6.2 Story Structure
+•	Primary Arc: Linear (god awakening → learning → authorship → eternity)
+•	Branching Sub-stories: Based on player choices (alignment tracking)
+•	All Endings: Logged in Journal and Archive, equally valid
+6.3 Alignment Tracking
+•	Invisible score (never displayed as a number)
+•	Accumulates from choices the player already makes:
+o	Worship Mode: Fear/Duty → authoritarian; Devotion/Transcendence → benevolent
+o	Heresy Responses: Suppress/Weaponize → tyranny; Absorb/Legalize → mercy
+o	Miracle Usage: Curse Dissent/Apocalypse Rite → dark; Declare Jubilee/Jubilant Peace → benevolent
+o	Offerings: Blood Pact → dark
+•	Surfaces In: Story entries, final narrative, available Eternity endings
+•	Tone: Player should sense their alignment through story beats, not read it off a bar
+6.4 Story Beats by Stage
+Stage	Beat	Unlock
+Cell	First Spark	Run start
+Cell	Cell Endures	First Cell completion
+Cell	First Membrane Holds	Mid-Cell
+Creature	First Body Stirs	Creature unlock
+Creature	Instinct Learns	Mid-Creature
+Tribal	Fire is Remembered	Tribal unlock
+Tribal	First Circle	Mid-Tribal
+Civilization	Cities Learn to Dream	Mid-Civilization
+Empire	Distance Begins to Obey	Mid-Empire
+Solar	Sky Stops Being a Wall	Mid-Solar
+Galactic	Galaxy Takes a Shape	Mid-Galactic
+Galactic	Creation Reaches Stars	First Galactic Win
+Enlightenment	God Opens Its Eyes	Evolution complete
+Enlightenment	Foresight Kindled	First Enlightenment reset
+Transcendence	Power Drawn From History	Transcendence unlock
+Transcendence	First Offering	First offering made
+Genesis	First Authored World	Genesis unlock
+Apotheosis	Mortals Learn the Divine Name	Apotheosis unlock
+Singularity	System Learns the God	Singularity unlock
+Omnipotence	Boundaries Are Denied	Omnipotence unlock
+Divinity	Creation Looks Back	Divinity unlock
+Infinity	Many Histories Become One Will	Infinity unlock
+Eternity	Universe Worth Keeping	Eternity unlock
+Eternity	Final Testament is Written	Eternity complete
+Eternity	Universe is Cast Again	First universe reset
+________________________________________
+7. UI/UX Design
+7.1 Layout Philosophy
+•	Clean and minimal top bar (stage, score, population)
+•	Dense, informative dashboard (resources, progress)
+•	Narrative as the container (theme changes with progression)
+•	Predictable UI structure (navigation stays consistent)
+7.2 Screen Layout
+text
+┌──────────────────────────────────────────────────────────────┐
+│  [Theme Background - Dynamic per Stage/Layer]              │
+│                                                              │
+│  ┌─────────────┐  ┌─────────────────────────────────┐      │
+│  │  NAVIGATION │  │  CONTENT AREA                   │      │
+│  │  (Bottom on │  │  (Scrollable, Tab-based)       │      │
+│  │   mobile,   │  │                                 │      │
+│  │   side on   │  │  ┌─────────────────────────┐   │      │
+│  │   desktop)  │  │  │  Stage Progress Bar     │   │      │
+│  │             │  │  └─────────────────────────┘   │      │
+│  │  ⚡ Cell    │  │  ┌─────────────────────────┐   │      │
+│  │  🧬 Creature│  │  │  Resource Row          │   │      │
+│  │  🔥 Tribal  │  │  └─────────────────────────┘   │      │
+│  │  🏛️ Civ     │  │                                 │      │
+│  │  ⚔️ Empire  │  │  ┌─────────────────────────┐   │      │
+│  │  ☀️ Solar   │  │  │  Tab Content           │   │      │
+│  │  🌌 Galactic│  │  │  (Actions/Systems/     │   │      │
+│  │             │  │  │   Tech/World/Shop)     │   │      │
+│  │  [≡ Shop]  │  │  └─────────────────────────┘   │      │
+│  └─────────────┘  └─────────────────────────────────┘      │
+│                                                              │
+│  [Evolve] [Save] [Options]                                 │
+└──────────────────────────────────────────────────────────────┘
+7.3 Navigation Options (Settings-selectable)
+1.	Bottom Tabs (default mobile): 5 main tabs + hamburger for sub-tabs
+2.	Sidebar Navigation (default desktop): Expanded side menu
+3.	Hamburger Menu: Collapsible overlay
+7.4 Tabs
+Tab	Content
+Actions	Manual actions for current stage
+Systems	Stage systems/buildings (with map)
+Tech	Technology tree for current stage
+World	Meta systems, rivals, relics, layers
+Shop	Prestige upgrades, challenges, cosmetics
+Journal	Story archive, timeline
+Codex	Persistent discoveries, achievements
+7.5 Notifications
+•	Toasts: Brief popups for purchases, milestones, events
+•	Log: Full history in Log tab
+•	Badges: "NEW" / number indicator on tabs with new content
+•	Visual: Resource chips pulse when near cap or in shortage
+7.6 Focus Panel
+•	Surfaces "attention required" items
+•	Categories: Critical, Choice, Reminder
+•	Visible during gameplay, not between runs
+•	Minimizable for experienced players
+7.7 Between-Runs Flow
+1.	Summary: Victory/failure, score, EP earned, story entry
+2.	Unlocks: Notifications for new shop items, layer features, archetypes
+3.	Configuration:
+o	Archetype (lineage radar from prior runs)
+o	Genesis world choices (if unlocked)
+o	Worship mode (if Apotheosis)
+o	Hybrid lineage (if Omnipotence)
+o	Divine mask + prayer polarity (if Divinity)
+o	Relic loadout (if Singularity)
+o	Echo bindings + active fork + future debt (if Infinity)
+4.	Seed Run: Lock choices, begin Cell
+5.	Quick Restart: Use previous exact configuration (bypass setup)
+________________________________________
+8. Theme System
+8.1 Philosophy
+•	Dynamic by default: Theme follows progression
+•	Lockable option: Player can choose any unlocked theme
+•	Themes per stage (3 variants each)
+•	Layer overlays applied on top of stage themes
+8.2 Stage Themes (3 variants each)
+Stage	Variant 1	Variant 2	Variant 3
+Cell	Minimalist Pulse	Primeval Neon	Micro-to-Bloom
+Creature	Bioluminescent Habitat	Abstract Zoology	Warm Pulp
+Tribal	Shamanic Ember	Totemic Grid	Dawn of Clan
+Civilization	Imperial Scrolls	Urban Arc	Rhythms of Rule
+Empire	Solar Dynasty	Forge & Empire	Celestial Dominion
+Solar	Helio-Grid	Radiant Core	Daystar Landscape
+Galactic	Deep Space Opera	Nebulae & Orbits	Quantum Realms
+8.3 Layer Themes (applied as overlay)
+Layer	Tone	Visual Identity
+Evolution	Early Whisper	Muted grayscale, micro-glow
+Enlightenment	Self-Reflective Lens	Cooler palette, interconnected nodes
+Transcendence	Beyond Causality	Layered depth, translucent panels
+Genesis	True Creation	Blank canvas, warm dawn palette
+Apotheosis	Divine Workshop	Metallics, ceremonial patterns
+Singularity	System Convergence	Neon network lines, transparent dashboards
+Omnipotence	Rewrite Reality	Editor-style, dramatic contrasts
+Divinity	Cosmic Devotion	Celestial motifs, spectral halos
+Infinity	Multiverse Tapestry	Branching timelines, iridescent gradients
+Eternity	Enduring Legacy	Timeless materials, restrained palette
+8.4 Setting: Theme Mode
+1.	Dynamic (default): Follows progression
+2.	Locked: Player-selected unlocked theme
+8.5 Setting: Theme Selection
+•	Choose any unlocked theme
+•	Unlock conditions: Stage completion (stage themes), Layer completion (layer themes)
+•	Fantasy Mode available after Eternity
+________________________________________
+9. Achievement System
+9.1 Overview
+•	200-300 achievements across all systems
+•	Hidden until earned (shows count per category: "X of Y discovered")
+•	Small bonuses: 0.5-1% per achievement (20-30% total at full completion)
+9.2 Categories
+Category	Focus
+Stage Completion	Clear each stage, various conditions
+Speed Runs	Clear stages within time limits
+Lineage Mastery	Complete runs with each lineage
+Resource Milestones	Reach resource thresholds
+Crisis Survival	Survive specific crisis events
+Narrative Choices	Make specific story decisions
+Layer Mastery	Complete each layer
+Cosmetic Discovery	Unlock themes
+9.3 Display
+•	Achievement panel in Codex tab
+•	Category progress shown
+•	Bonus effects visible in Effects panel
+•	Unlock notification toast
+________________________________________
+10. Save System
+10.1 Save Slots
+•	3 local slots (selectable on start screen)
+•	Each slot shows: current layer, win count, play time, last-played date
+•	Export/Import on selected slot
+•	No cloud sync at launch
+10.2 Save Contents
+•	Everything (complete state)
+•	Compressed for efficiency (target <1MB)
+•	Versioned for seamless upgrades
+10.3 Persistence Rules
+•	Run Reset: Only meta upgrades persist
+•	Layer Unlock: Layer progress persists across runs
+•	Achievements: Permanent
+•	Theme Unlocks: Permanent
+10.4 Save Operations
+•	Auto-save: Every 30 seconds
+•	Manual: Save button
+•	Export: Encrypted text (copy/paste or file)
+•	Import: Paste encrypted text or load file
+10.5 Version Upgrades
+•	Seamless (migration code in save loader)
+•	Each save includes version number
+•	New fields get defaults
+________________________________________
+11. Accessibility
+11.1 Color Blind Modes
+•	Protanopia
+•	Deuteranopia
+•	Tritanopia
+•	High Contrast
+•	CSS variable swaps (same as theme system)
+11.2 Font Scaling
+•	Normal (default)
+•	Large
+•	Extra Large
+11.3 Interaction
+•	Tooltip text on hover
+•	Long-press support for mobile
+•	Semantic HTML (screen reader support = post-launch)
+________________________________________
+12. Technical Architecture
+12.1 Platform
+•	Launch: 100% web (HTML/JS/CSS)
+•	PWA: Offline support via service worker
+•	Future: App store downloads (React Native)
+12.2 Architecture (Post-Migration)
+text
+src/
+├── core/
+│   ├── data/          # All game data (JSON-like modules)
+│   ├── logic/         # Pure game logic (no DOM)
+│   └── state/         # State management (Zustand)
+├── components/        # React components
+│   ├── layout/        # Header, Navigation, Footer
+│   ├── stage/         # Stage panel, progress, stats
+│   ├── resources/     # Resource panel, chips
+│   ├── tabs/          # Tab container + all tabs
+│   └── modals/        # Shop, Settings, Story
+├── hooks/             # Custom React hooks
+├── styles/            # CSS modules + theme system
+└── assets/            # Images, fonts, icons
+12.3 Libraries
+Purpose	Library
+UI Framework	React
+State	Zustand
+Styling	CSS Modules (+ Tailwind optional)
+Icons	Lucide React (MIT)
+Fonts	Inter (OFL)
+Save Compression	LZString
+12.4 Data Usage
+•	Load once at start
+•	Fully offline (no server calls)
+•	No analytics (privacy by design)
+________________________________________
+13. Monetization
+13.1 Model
+•	Free to play
+•	Donation supported (no pay-to-win)
+•	Cosmetic only in future (if any)
+13.2 No Microtransactions at Launch
+•	No QoL purchases
+•	No power purchases
+•	No gacha
+13.3 Patron/Supporter
+•	No tier system
+•	Link to donation page only
+________________________________________
+14. Long-Term Vision
+14.1 Endgame Experience
+•	Endless loops (player gets bored naturally)
+•	God's Sandbox (shop item after full completion, enables debug mode)
+•	No permanent boosts to regular game from sandbox
+14.2 Expansion Plan
+•	Layer system is the expansion plan
+•	Fantasy Mode = proof of concept for future cosmetic overhauls
+•	Potential future: New stage themes, new lineage types, new layer variants
+14.3 Community Features
+•	None at launch (no backend)
+•	Links to community threads (Itch.io, Discord, Reddit)
+14.4 Launch Content
+•	All 7 stages (complete)
+•	Evolution Layer (35 challenges + mastery bonuses)
+•	Shop up to Evolution tier
+•	Achievements (200+)
+•	Story through Galactic
+•	Tutorial (Cell only, first run)
+14.5 Post-Launch Content
+•	Layer 2 (Enlightenment)
+•	Layer 3 (Transcendence)
+•	Layer 4 (Genesis)
+•	Layer 5 (Apotheosis)
+•	Layer 6 (Singularity)
+•	Layer 7 (Omnipotence)
+•	Layer 8 (Divinity)
+•	Layer 9 (Infinity)
+•	Layer 10 (Eternity)
+•	Fantasy Mode
+•	Cosmetics shop
+________________________________________
+15. Balance Goals
+15.1 Difficulty Philosophy
+•	One fixed curve (no difficulty settings)
+•	Gentle start (Cell tutorial)
+•	Progressively punishing based on playstyle (evil/kind choices)
+•	No multiplayer, no catch-up mechanics
+15.2 Offline Balance
+•	Fair simulation
+•	24-hour base bank (extendable via shop)
+•	Full simulation on return (no partial credit)
+15.3 Progression Balance
+•	Each run should feel meaningful
+•	Shop upgrades should visibly accelerate runs
+•	10-20 runs to reach Evolution layer mastery
+•	50-100 runs to reach Eternity (optional)
+15.4 Cosmic Boons
+•	Each boon is meaningful (not just tiny numbers)
+•	Stacks encourage specialization
+•	Choice matters (can't have all boons)
+________________________________________
+16. Asset Requirements
+16.1 Fonts
+Font	Use	License
+Inter	Body text	OFL
+JetBrains Mono	Numbers	OFL
+Playfair Display	Titles	OFL
+16.2 Icons
+Library	Use	License
+Lucide React	UI icons	MIT
+Custom SVG	Game-specific (resources, buildings)	Custom
+16.3 Backgrounds
+•	3 variants per stage (7 stages = 21 backgrounds)
+•	Layer overlays (10 layers = 10 overlays)
+•	CC0 sources: Unsplash, Pexels, generated SVG patterns
+16.4 Theme Assets
+•	Stage backgrounds (21)
+•	Layer overlays (10)
+•	Color palettes for each
+•	CSS variable sets
+________________________________________
+17. Appendix: Unanswered Mechanical Questions (Resolved)
+Q-A1: God Alignment
+Answer: Invisible accumulated score. Surfaces in story entries, final narrative, Eternity endings. Never displayed as number. Player senses tone through story beats.
+Q-A2: Galactic Endings
+Answer: 5 paths × 2 alignment variants = 10 endings. Compassionate vs Tyrannical versions per path. Archetype colors flavor text. All logged equally.
+Q-A3: Between-Runs Setup
+Answer: Summary → Unlocks → Configuration → Seed Run. Configuration surfaces layer-specific choices (Genesis, Apotheosis, etc.). Quick Restart uses previous config.
+Q-A4: Offline Progression
+Answer: Full simulation with banked time cap. Base 24 hours, extendable via Temporal Reserves shop upgrade (infinite tiers). No separate time currency.
+Q-A5: Forks
+Answer: Dropped parallel game. Replaced with ghost projections: player designates decision, watches two simulated trajectories for ~30s, commits to one. Discarded branch gives small passive bonus.
+Q-A6: Archive/Timeline
+Answer: Prominent Journal sub-tab. Auto-generated entries per run. Pinnable favorites. Archive milestones (25/50/100/200) give permanent bonuses. Timeline tracks milestone moments within runs.
+Q-A7: Contracts
+Answer: Live in Stage panel under "Wager" header (not Challenge tab). Voluntary self-imposed difficulty. Optional, EP-focused. Cannot stack with active Evolution Challenge.
+Q-A8: Rivals
+Answer: Background lore before Empire. Mechanical pressure starts at Empire. Primary failure is internal (collapse, rebellion). Rivals create urgency, not hard failure. Galactic exception: rival ascension gives player a narrow catch-up window.
+Q-A9: Congress/Institution
+Answer: Managed background complexity. Proposals surface in Focus panel as "choice" tier. Pick one, move on. Institution crises are rare and impactful. Lineage laws are most interesting, surfaced clearly.
+Q-A10: Threat/Crisis/Scar
+Answer: Threats = visible warnings (Focus panel). Threats ignored too long = crisis (urgent). Crisis ignored = run end. Scar Recovery Archive at Galactic transforms scars into positives.
+Q-A11: Vassals
+Answer: Mid-Empire to Solar mechanic. Rewards diplomatic rival handling. Modest resource trickle + removes rival pressure. No active management required.
+Q-A12: Doctrine/Specialization
+Answer: Specialization = one choice per run at Creature. Defines clear identity. Lineage doctrines (2 per archetype) = cultural identity. Evolved doctrine = unique story beat.
+Q-A13: Challenge Count
+Answer: 35 total (5 per stage). Full distribution specified above.
+Q-A14: Bad World/Scoring
+Answer: Displayed EP modifier during world creation. Easy = 0.7x, Hard = 1.6x, Extreme = 2.5x max.
+Q-A15: Achievements
+Answer: 200-300 total. Hidden until earned, category progress shown. 0.5-1% bonuses each. 20-30% total at full completion.
+Q-A16: Tutorial
+Answer: Cell only, first run. Each subsequent stage gets "What's New This Stage" modal (one screen, dismissable). Reset-able in Options.
+Q-A17: Mask Change Cost
+Answer: 500 Divinity aggregate. Available from Divinity layer panel. Clear warning shows cost and what changes.
+Q-A18: Fantasy Mode
+Answer: Session-level toggle, unlocked from cosmetics shop after Eternity. Cosmetic text replacement only. No mechanical changes. Journal/Archive preserve mode used during run.
+Q-A19: Feedback Form
+Answer: Drop in-game form. Use link (Google Form, Itch.io thread) on Eternity completion screen.
+Q-A20: Multiple Save Slots
+Answer: 3 local slots. Selectable from start screen. Export/Import on selected slot. No cloud sync.
+Q-A21: Audio
+Answer: None at launch. May add later. Music shifts tone with each stage. Prestige layers get ambient layer. Sound effects for purchases, milestones, events. Full audio settings in Options.
+Q-A22: Accessibility
+Answer: 4 color blind modes. Font size scaling (3 options). Tooltip text on hover + long-press. Screen reader support post-launch.
+Q-A23: Mobile Layout
+Answer: Web-first. Mobile-aware CSS (single-column below 768px). Bottom tab bar on mobile. PWA manifest at launch.
+Q-A24: Prestige Shop Structure
+Answer: Visible tiers that unlock sequentially. Tier 1 (win 1+), Tier 2 (win 3+), Tier 3 (win 5+), Tier 4 (win 10+). Higher tiers visible but locked with label. Search/filter option.
+________________________________________
+18. Next Steps
+1.	Build React foundation - Vite + Zustand + theme system
+2.	Implement all 7 stages with complete data
+3.	Implement Evolution Layer with 35 challenges
+4.	Build UI components - Stage panel → Resources → Tabs
+5.	Implement save system with compression and migration
+6.	Playtest for balance, pacing, feel
+7.	Iterate based on feedback
+8.	Release browser version
+9.	Continue layers (2-10) as post-launch content
+________________________________________
+This document is a living design reference. All decisions recorded here are final for the current iteration but may evolve during implementation.
+

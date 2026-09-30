@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Evolution Idle</title>
+  <link rel="icon" type="image/png" href="assets/favicon-evolution.png" />
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <header class="panel header">
+    <div>
+      <h1>Evolution Idle</h1>
+      <p>Schema-first rebuild with a frontier-based evolution ladder, an ATP-first Cell loop, and debug controls under Options.</p>
+    </div>
+  </header>
+
+  <section class="panel resource-panel">
+    <div class="section-head">
+      <h2>Resources</h2>
+      <div class="tiny">Current stage only</div>
+    </div>
+    <div class="resource-topbar" id="resource-topbar"></div>
+    <div class="resource-detail-panel hidden" id="resource-detail-panel"></div>
+  </section>
+
+  <main class="shell">
+    <section class="panel stage-panel">
+      <div class="section-head">
+        <h2>Current Stage</h2>
+        <div class="tiny">Active layer only</div>
+      </div>
+      <div class="stage-art" id="stage-art-hook"></div>
+      <div class="summary-grid">
+        <div class="summary-box"><div class="label">Stage</div><div class="value" id="stage-name"></div><div class="tiny" id="stage-desc"></div></div>
+        <div class="summary-box"><div class="label">Population</div><div class="value" id="population-value"></div><div class="tiny" id="population-trend"></div></div>
+        <div class="summary-box"><div class="label">Score</div><div class="value" id="score-value"></div><div class="tiny" id="score-detail"></div></div>
+        <div class="summary-box"><div class="label">Run Status</div><div class="value" id="run-status-value"></div><div class="tiny" id="run-status-detail"></div></div>
+      </div>
+      <div class="mini-card" id="advisor-card"><div class="label">Advisor</div><div class="advisor" id="advisor-text"></div><div class="tiny" id="pace-text"></div></div>
+      <div class="mini-card"><div class="label">Stage Score</div><div class="bar"><div class="fill" id="stage-score-fill"></div></div><div class="tiny" id="stage-score-label"></div></div>
+      <div class="mini-card"><div class="label">Evolve</div><div class="bar"><div class="fill" id="ascend-fill"></div></div><div class="tiny" id="ascend-status"></div><div class="tiny" id="ascend-requirements"></div><button id="ascend-btn">Evolve</button></div>
+      <details class="compact-details" id="run-features-details" open><summary>Run Features</summary><div class="mini-grid" id="feature-strip"></div></details>
+      <details class="compact-details" id="archetype-details" open><summary>Archetype Drift</summary><canvas class="archetype-radar" id="archetype-radar" width="340" height="250"></canvas><div class="mini-grid" id="archetype-list"></div></details>
+      <details class="compact-details" id="traits-details" open><summary>Inherited Traits</summary><div class="mini-grid" id="trait-list"></div></details>
+    </section>
+
+    <section class="panel main-panel">
+      <section class="between-runs hidden" id="between-runs-panel">
+        <div class="section-head"><h2 id="between-runs-title">Evolution Shop</h2><div class="tiny" id="between-runs-subtitle">Spend Evolution Points between runs</div></div>
+        <details class="compact-details" data-header="review" open><summary>Run Review</summary><div class="summary-grid" id="run-review-list"></div></details>
+        <div class="mini-card"><div class="label">Evolution Points</div><div class="value" id="evo-value"></div><div class="tiny" id="evo-detail"></div><div class="bar"><div class="fill" id="evo-fill"></div></div></div>
+        <details class="compact-details" data-header="law" open><summary>Legacy Universe</summary><div class="buy-list" id="legacy-tier-list"></div></details>
+        <details class="compact-details" data-header="artifact"><summary>Run Banner</summary><div class="buy-list" id="cosmetic-theme-list"></div></details>
+        <details class="compact-details" data-header="project" id="seed-setup-block" open><summary>Seed Conditions</summary><div class="summary-grid" id="seed-setup-list"></div><div class="buy-list" id="seed-guidance-list"></div></details>
+        <div class="buy-list" id="prestige-list"></div>
+        <div class="between-actions"><button id="shop-close-btn">Start Next Run</button></div>
+      </section>
+
+      <div class="tabs">
+        <button class="tab active" data-tab="actions">Actions</button>
+        <button class="tab" data-tab="systems">Stage Systems</button>
+        <button class="tab" data-tab="automation">Production</button>
+        <button class="tab hidden" data-tab="auto-control" id="auto-tab-btn">Automation</button>
+        <button class="tab" data-tab="tech">Tech</button>
+        <button class="tab hidden" data-tab="lineage" id="lineage-tab-btn">Lineage</button>
+        <button class="tab" data-tab="world">World</button>
+        <button class="tab" data-tab="story">Story</button>
+        <button class="tab" data-tab="codex">Codex</button>
+        <button class="tab" data-tab="archive">Archive</button>
+        <button class="tab" data-tab="log">Log</button>
+        <button class="tab hidden" data-tab="debug" id="debug-tab-btn">Debug</button>
+      </div>
+
+      <section class="focus-overlay hidden" id="focus-overlay">
+        <div class="section-head">
+          <h2 id="focus-title">Attention</h2>
+          <div class="inline-actions">
+            <button id="focus-minimize-btn">Minimize</button>
+          </div>
+        </div>
+        <div class="tiny" id="focus-subtitle"></div>
+        <div class="subsystembar" id="focus-filter-bar"></div>
+        <div class="mini-grid" id="focus-tier-strip"></div>
+        <div class="buy-list" id="focus-list"></div>
+      </section>
+      <section class="story-popup hidden" id="story-popup">
+        <div class="section-head">
+          <h2 id="story-popup-title">Scripture</h2>
+          <div class="tiny" id="story-popup-layer"></div>
+        </div>
+        <div class="tiny" id="story-popup-text"></div>
+        <div class="between-actions"><button id="story-popup-dismiss-btn">Continue</button></div>
+      </section>
+      <section class="story-popup hidden universe-summary-screen" id="universe-summary-screen">
+        <div class="section-head">
+          <h2 id="universe-summary-title">Preserved Universe</h2>
+          <div class="tiny" id="universe-summary-subtitle"></div>
+        </div>
+        <div class="summary-grid" id="universe-summary-grid"></div>
+        <div class="buy-list" id="universe-summary-sections"></div>
+        <div class="between-actions"><button id="universe-summary-close-btn">Return to Eternity</button></div>
+      </section>
+
+      <section class="tab-panel active" id="tab-actions"><details class="compact-details" open id="onboarding-details"><summary>What Changed</summary><div class="buy-list" id="onboarding-list"></div></details><details class="compact-details" open><summary>Manual Actions</summary><div class="tiny help-row">Bootstrap the current layer</div><div class="action-grid" id="action-grid"></div></details><details class="compact-details" open><summary>Stage Objectives</summary><div class="buy-list" id="stage-goal-list"></div></details></section>
+      <section class="tab-panel" id="tab-systems"><div class="section-head"><h2 id="systems-title">Stage Systems</h2><div class="tiny">Current layer only</div></div><details class="compact-details"><summary>Owned Systems</summary><div class="mini-grid" id="systems-overview-list"></div></details><details class="compact-details" open><summary>Stage Map</summary><div class="map-board" id="systems-map-board"></div></details><div class="subsystembar" id="systems-subbar"></div><div class="tiny" id="systems-hint"></div><div class="buy-list" id="systems-list"></div></section>
+      <section class="tab-panel" id="tab-automation"><div class="section-head"><h2 id="automation-title">Production</h2><div class="tiny">Owned production and upkeep</div></div><div class="automation-summary-strip" id="automation-summary-strip"></div><div class="subsystembar" id="automation-subbar"></div><div class="tiny" id="automation-hint"></div><div class="buy-list" id="automation-list"></div></section>
+      <section class="tab-panel" id="tab-auto-control"><div class="section-head"><h2>Automation</h2><div class="tiny">Unlocked Evo autobuyers</div></div><div class="buy-list" id="auto-control-list"></div></section>
+      <section class="tab-panel" id="tab-tech"><div class="section-head"><h2 id="tech-title">Tech</h2><div class="tiny">Stage-specific paths</div></div><div class="subsystembar" id="tech-subbar"></div><div class="tiny" id="tech-hint"></div><div class="buy-list" id="tech-list"></div></section>
+      <section class="tab-panel" id="tab-lineage"><div class="section-head"><h2>Lineage</h2><div class="tiny">Identity, policy, story, and pressure for the current lineage</div></div><details class="compact-details" open><summary>Identity</summary><div class="summary-grid" id="lineage-identity-list"></div><div class="buy-list" id="specialization-list"></div></details><details class="compact-details" data-header="law" open><summary>Policies</summary><div class="summary-grid" id="lineage-policy-summary"></div><div class="buy-list" id="lineage-law-list"></div></details><details class="compact-details" open><summary>Stories</summary><div class="summary-grid" id="lineage-story-summary"></div><div class="buy-list" id="lineage-event-list"></div></details><details class="compact-details" open><summary>Pressure</summary><div class="summary-grid" id="lineage-pressure-summary"></div><div class="buy-list" id="threat-list"></div><div class="buy-list" id="pressure-alert-list"></div><div class="buy-list" id="route-list"></div></details></section>
+      <section class="tab-panel" id="tab-world"><div class="section-head"><h2>World</h2><div class="tiny">Meta systems, rivals, relics, and long-range planning</div></div><div class="summary-grid" id="world-summary-list"></div><details class="compact-details" open><summary>Post-Galactic Milestones</summary><div class="buy-list" id="milestone-list"></div></details><details class="compact-details" open><summary>Run Mutator Draft</summary><div class="buy-list" id="mutator-list"></div></details><details class="compact-details" open><summary>Stage Layouts</summary><div class="buy-list" id="map-slot-list"></div></details><details class="compact-details"><summary>Map Wonders</summary><div class="buy-list" id="map-wonder-list"></div></details><details class="compact-details"><summary>Diplomatic Congress</summary><div class="buy-list" id="congress-list"></div></details><details class="compact-details"><summary>World Events</summary><div class="buy-list" id="world-event-list"></div></details><details class="compact-details" data-header="artifact" open><summary>Artifacts</summary><div class="buy-list" id="artifact-list"></div></details><details class="compact-details"><summary>Contracts</summary><div class="buy-list" id="contract-list"></div></details><details class="compact-details"><summary>Rivals</summary><div class="buy-list" id="rival-list"></div></details><details class="compact-details"><summary>Hybrid Lineage</summary><div class="buy-list" id="hybrid-list"></div></details><details class="compact-details"><summary>Genesis</summary><div class="buy-list" id="genesis-list"></div></details><details class="compact-details"><summary>Apotheosis</summary><div class="buy-list" id="apotheosis-list"></div></details><details class="compact-details"><summary>Singularity</summary><div class="buy-list" id="singularity-list"></div></details><details class="compact-details"><summary>Omnipotence</summary><div class="buy-list" id="omnipotence-list"></div></details><details class="compact-details"><summary>Divinity</summary><div class="buy-list" id="divinity-layer-list"></div></details><details class="compact-details"><summary>Infinity</summary><div class="buy-list" id="infinity-list"></div></details><details class="compact-details"><summary>Eternity</summary><div class="buy-list" id="eternity-layer-list"></div></details><details class="compact-details"><summary>Offerings</summary><div class="buy-list" id="offering-list"></div></details><details class="compact-details"><summary>Rituals</summary><div class="buy-list" id="ritual-list"></div></details><details class="compact-details"><summary>Scripts</summary><div class="buy-list" id="script-list"></div></details><details class="compact-details" data-header="project"><summary>Special Project</summary><div class="buy-list" id="project-list"></div></details><details class="compact-details"><summary>Ascension Path</summary><div class="buy-list" id="ascension-path-list"></div></details><details class="compact-details"><summary>Build Templates</summary><div class="buy-list" id="template-list"></div></details></section>
+      <section class="tab-panel" id="tab-story"><div class="section-head"><h2>Story</h2><div class="tiny">The in-universe scripture of what creation has lived through so far</div></div><div class="summary-grid" id="story-summary-list"></div><div class="subsystembar" id="story-filter-bar"></div><div class="buy-list" id="story-list"></div></section>
+      <section class="tab-panel" id="tab-codex"><div class="section-head"><h2>Codex</h2><div class="tiny">Persistent discoveries</div></div><div class="summary-grid" id="codex-summary-list"></div><details class="compact-details" open><summary>Archetypes</summary><div class="buy-list" id="codex-archetype-list"></div></details><details class="compact-details"><summary>Specializations</summary><div class="buy-list" id="codex-specialization-list"></div></details><details class="compact-details"><summary>Events and Endings</summary><div class="buy-list" id="codex-event-list"></div></details></section>
+      <section class="tab-panel" id="tab-archive"><details class="compact-details" open><summary>Archive</summary><div class="subsystembar" id="archive-filter-bar"></div><div class="control-row archive-search-row"><span>Search archive</span><input type="text" id="archive-search" placeholder="Search names, endings, content..." /></div><div class="archive-grid" id="archive-list"></div></details></section>
+      <section class="tab-panel" id="tab-log"><details class="compact-details" open><summary>Run Log</summary><div class="log" id="log"></div></details></section>
+      <section class="tab-panel" id="tab-debug">
+        <div class="section-head"><h2>Debug</h2><div class="tiny">Testing controls, stage jumps, and meta scaffolding</div></div>
+        <div class="mini-grid" id="summary-list"></div>
+        <details class="compact-details" open><summary>Speed and Run Control</summary><div class="debug-grid" id="debug-speed-list"></div></details>
+        <details class="compact-details" open><summary>Stage and Frontier</summary><div class="debug-grid" id="debug-stage-list"></div></details>
+        <details class="compact-details" open><summary>Meta and Prestige</summary><div class="debug-grid" id="debug-meta-list"></div></details>
+      </section>
+    </section>
+  </main>
+
+  <footer class="bottom-bar">
+    <div class="bottom-actions"><button id="save-btn">Save</button><button id="rebirth-btn">Rebirth</button><button id="options-btn">Options</button><button id="reset-btn">Reset</button></div>
+    <button class="hidden" id="focus-restore-btn">Open Attention</button>
+    <div class="options-panel hidden" id="options-panel">
+      <div class="label">Options</div>
+      <label class="check-row"><input type="checkbox" id="debug-toggle" /> Enable debug tools</label>
+      <label class="check-row"><input type="checkbox" id="guidance-toggle" checked /> Show guidance and onboarding</label>
+      <label class="check-row"><input type="checkbox" id="compact-toggle" /> Compact card spacing</label>
+      <label class="control-row"><span>Crisis intensity</span><select id="crisis-intensity-select"><option value="gentle">Gentle</option><option value="normal">Normal</option><option value="harsh">Harsh</option></select></label>
+      <div class="inline-actions debug-actions"><button id="pause-btn">Pause</button><button id="speed-btn">Speed x1</button></div>
+      <div class="tiny">When debug is on, anything can be bought or evolved without the normal requirements, and speed controls go up to 100x for testing.</div>
+    </div>
+  </footer>
+
+  <script src="js/data.js"></script>
+  <script src="js/state.js"></script>
+  <script src="js/logic.js"></script>
+  <script src="js/ui.js"></script>
+  <script src="js/main.js"></script>
+</body>
+</html>
