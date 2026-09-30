@@ -75,7 +75,10 @@ export function TutorialHints() {
   const [dismissedHints, setDismissedHints] = useState<Set<string>>(new Set());
   const [minimized, setMinimized] = useState(false);
 
+  // Don't show hints when a modal is open (avoids overlap with Evolve button etc.)
   if (gameStore.tutorialDismissed) return null;
+  if (gameStore.showEvolve || gameStore.showShop || gameStore.showSettings) return null;
+  if (gameStore.activeStoryPopup) return null;
 
   // Find the first hint that should show and hasn't been dismissed
   const activeHint = HINTS.find((h) =>

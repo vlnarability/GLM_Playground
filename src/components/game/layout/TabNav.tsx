@@ -64,14 +64,14 @@ export function TabNav() {
       </div>
 
       {/* Mobile bottom nav */}
-      <nav className="mobile-only sticky-footer glass-strong border-t border-border">
-        <div className="flex items-center justify-around py-1 px-1">
+      <nav className="mobile-only sticky-footer glass-strong border-t border-border" style={{ paddingBottom: "env(safe-area-inset-bottom)" }}>
+        <div className="flex items-center justify-around py-1.5 px-1">
           {TABS.slice(0, 4).map((tab) => (
             <button
               key={tab.id}
               onClick={() => setTab(tab.id)}
               className={cn(
-                "flex flex-col items-center gap-0.5 px-2 py-1 rounded-md text-[0.6rem] font-medium transition-colors",
+                "flex flex-col items-center gap-0.5 px-2.5 py-1.5 rounded-md text-[0.6rem] font-medium transition-colors min-w-[44px] min-h-[44px] justify-center",
                 currentTab === tab.id ? "text-foreground bg-muted/40" : "text-muted-foreground"
               )}
             >
@@ -84,7 +84,7 @@ export function TabNav() {
           <button
             onClick={() => setTab("story")}
             className={cn(
-              "flex flex-col items-center gap-0.5 px-2 py-1 rounded-md text-[0.6rem] font-medium transition-colors",
+              "flex flex-col items-center gap-0.5 px-2.5 py-1.5 rounded-md text-[0.6rem] font-medium transition-colors min-w-[44px] min-h-[44px] justify-center",
               currentTab === "story" ? "text-foreground bg-muted/40" : "text-muted-foreground"
             )}
           >

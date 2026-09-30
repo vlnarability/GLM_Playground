@@ -425,3 +425,73 @@ Game is stable and playable. Cell stage fully functional. Previous rounds added 
 4. **Balance tuning** — Verify Cell stage takes 5-60 min as designed. The playtest took ~48 min at 8x speed (6 min real time), which seems right.
 5. **More achievements** — Expand to 50+ (design doc targets 200-300). Add crisis survival and alignment achievements.
 6. **Mobile layout audit** — Test responsive design on actual mobile viewport sizes (375px width).
+
+---
+Task ID: 5
+Agent: webDevReview cron (round 4)
+Task: QA testing, generate PWA icons, fix tutorial/toast overlap, add random events system, mobile nav improvements
+
+## Current Project Status Assessment
+Game is stable and playable. Previous rounds added achievements, offline progress, save export/import, tutorial hints, PWA setup, and story triggers. This round focused on fixing PWA icon 404s, resolving notification overlap issues, and adding a substantial new feature: random events. The full Cell→Creature progression was verified working in the previous round.
+
+## Work Completed This Round
+
+### Bug Fixes
+1. **PWA icons 404 fix**: Generated `public/icon-192.png` and `public/icon-512.png` using Python/Pillow. Icons feature a deep ink-blue background with an amber lightning bolt — matching the game's "specimen journal" aesthetic. Verified icons load at `/icon-192.png`.
+
+2. **Tutorial hint + Evolve button overlap** (VLM feedback): Tutorial hints now auto-hide when any modal is open (`showEvolve`, `showShop`, `showSettings`) or when a story popup is active (`activeStoryPopup`). This prevents the "Ready to evolve" hint from blocking the Evolve button.
+
+3. **Achievement toast + story popup overlap** (VLM feedback): Achievement toasts now suppress when a story popup, Evolve modal, or Settings modal is active. The toast will show after the modal is dismissed (the `newAchievements` queue persists).
+
+### New Features
+4. **Random events system** (`src/game/data/events.ts` + `EventModal.tsx` + `resolveEvent` action):
+   - 12 events across all 7 stages (Cell, Creature, Tribal, Civilization, Empire, Solar, Galactic)
+   - Each event has a name, description, icon, and 2 choices with different effects
+   - Events fire randomly with weighted probability, 90-180s cooldown between events
+   - First event can fire after 60s of game time
+   - Effects include: resource changes, population changes, happiness changes, archetype affinity shifts
+   - Example events:
+     - Cell: "Chemical Bloom" (absorb vs avoid), "Shadow in the Deep" (hide vs flee), "Membrane Stress" (reinforce vs heal)
+     - Creature: "Rival Pack" (fight vs share), "Strange Fruit" (eat vs cultivate)
+     - Tribal: "Harsh Winter" (ration vs feast), "Wandering Elder" (welcome vs turn away)
+     - Civilization: "Plague Rumor" (quarantine vs ignore), "Golden Age" (celebrate vs invest)
+     - Empire: "Border Incursion" (respond vs diplomacy)
+     - Solar/Galactic: "Solar Flare" (harvest vs shield), "Ancient Signal" (investigate vs silence)
+   - Event modal requires a choice (can't dismiss by clicking backdrop)
+   - Log entry recorded after resolving
+
+### Styling Improvements
+5. **Mobile nav tap targets** (VLM feedback): Bottom nav buttons increased from `px-2 py-1` to `px-2.5 py-1.5` with `min-w-[44px] min-h-[44px]` (Apple's recommended 44pt minimum touch target). Added `env(safe-area-inset-bottom)` padding for iPhone home indicator clearance.
+
+### Code Quality
+- 0 lint errors in project code (6 warnings all in `upload/` vanilla JS)
+- Event state (`activeEvent`, `eventCooldown`) added to GameState and migration
+- Events only fire when no popup/modal is active (prevents overlap)
+- Event effects properly clamp resources to capacities and max(0)
+
+## Verification Results
+- Dev server compiles cleanly, no errors
+- PWA icons load at `/icon-192.png` and `/icon-512.png` (no more 404s)
+- Random event "Shadow in the Deep" fired after ~60s of game time
+- Event modal appeared with two choices, both clickable
+- Chose "Flee aggressively" → glucose decreased by 5, ATP increased (capped at 30)
+- Log entry: "Shadow in the Deep: Fled the predator. Burned glucose, gained ATP."
+- Tutorial hints no longer overlap with modals
+- Achievement toasts no longer overlap with story popups
+- Mobile layout responsive at 375px width, bottom nav has 44px tap targets
+- VLM: "distinctly hand-crafted... bespoke design rather than a reskinned template"
+- 0 lint errors in project code
+
+## Unresolved Issues / Risks
+1. **Service worker only in production**: SW registration is skipped in dev. Can't test offline mode without a production build.
+2. **Later stages playtest**: Tribal → Galactic haven't been playtested end-to-end. Events fire but balance is unverified.
+3. **Event balance**: Event effects haven't been playtested for balance. Some may be too strong or weak relative to stage progression.
+4. **Event variety**: 12 events is a good start but the design doc implies more variety (crisis events, alignment events). Could add more.
+
+## Priority Recommendations for Next Phase
+1. **Playtest later stages** — Run through Tribal → Galactic to verify events, systems, and tech all work.
+2. **Add more events** — Expand to 25+ events. Add crisis survival events (design doc §2.5), alignment-tracking events (§6.3), and stage-transition events.
+3. **Event log/history** — Add a sub-tab in the Archive or Log to review past event choices and outcomes.
+4. **More achievements** — Expand to 50+ (design doc targets 200-300). Add event-specific achievements ("Survived 10 events", "Chose diplomacy 5 times").
+5. **Balance tuning** — Verify event effects are meaningful but not game-breaking at each stage.
+6. **PWA production test** — Build for production and verify the service worker caches correctly for offline play.

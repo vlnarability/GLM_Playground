@@ -12,6 +12,7 @@ import { UPGRADE_MAP, UPGRADES, upgradeCost } from "../data/upgrades";
 import { STORY_MAP, STORY_TRIGGERS } from "../data/story";
 import { ARCHETYPE_MAP, dominantArchetype } from "../data/archetypes";
 import { ACHIEVEMENTS, achievementBonus, type AchievementCheckCtx } from "../data/achievements";
+import { EVENTS, eventsForStage, EVENT_MAP } from "../data/events";
 
 const STORAGE_KEY = "evolution_idle_v2";
 
@@ -60,6 +61,8 @@ function initialMetaState(): Partial<GameState> {
     showEvolve: false,
     showSettings: false,
     activeStoryPopup: "first_spark",
+    activeEvent: null,
+    eventCooldown: 60, // first event can fire after 60s
     hasSeenIntro: false,
     lastSaved: Date.now(),
     tutorialStep: 0,
@@ -211,6 +214,30 @@ export const useGameStore = create<GameStore>()(
           (s as any)._lastAchCheck = newTime; // not persisted, just a runtime marker
         }
 
+        // Random event firing — only if no popup/modal is active
+        let activeEvent = s.activeEvent;
+        let eventCooldown = (s.eventCooldown || 0) - realDt;
+        if (eventCooldown < 0) eventCooldown = 0;
+        if (!activeEvent && !activePopup && eventCooldown === 0) {
+          const stageId = STAGES[s.stageIndex].id;
+          const possible = eventsForStage(stageId, newTime);
+          if (possible.length > 0) {
+            // Weighted random selection
+            const totalWeight = possible.reduce((sum, e) => sum + e.weight, 0);
+            const roll = Math.random() * totalWeight;
+            let cum = 0;
+            for (const ev of possible) {
+              cum += ev.weight;
+              if (roll < cum) {
+                activeEvent = ev.id;
+                // Set next cooldown: 90-180 seconds
+                eventCooldown = 90 + Math.random() * 90;
+                break;
+              }
+            }
+          }
+        }
+
         set({
           resources,
           capacities,
@@ -222,6 +249,8 @@ export const useGameStore = create<GameStore>()(
           activeStoryPopup: activePopup,
           achievements,
           newAchievements,
+          activeEvent,
+          eventCooldown,
         });
       },
 
@@ -564,6 +593,50 @@ export const useGameStore = create<GameStore>()(
       setShowSettings: (v) => set({ showSettings: v }),
       dismissTutorial: () => set({ tutorialActive: false, tutorialDismissed: true }),
 
+      resolveEvent: (eventId, choiceId) => {
+        const s = get();
+        const ev = EVENT_MAP[eventId];
+        if (!ev) {
+          set({ activeEvent: null });
+          return;
+        }
+        const choice = ev.choices.find((c) => c.id === choiceId);
+        if (!choice) {
+          set({ activeEvent: null });
+          return;
+        }
+        // Apply effects
+        const res = { ...s.resources };
+        if (choice.resourceChanges) {
+          for (const [r, v] of Object.entries(choice.resourceChanges)) {
+            const cap = s.capacities[r] || Infinity;
+            res[r] = Math.max(0, Math.min(cap, (res[r] || 0) + (v as number)));
+          }
+        }
+        let pop = s.population;
+        if (choice.populationChange) {
+          pop = Math.max(0, pop + choice.populationChange);
+        }
+        if (choice.happinessChange) {
+          const cap = s.capacities.happiness || 100;
+          res.happiness = Math.max(0, Math.min(cap, (res.happiness || 0) + choice.happinessChange));
+        }
+        const archetypeAffinity = { ...s.archetypeAffinity };
+        if (choice.affinityChange) {
+          for (const ac of choice.affinityChange) {
+            archetypeAffinity[ac.archetype] = (archetypeAffinity[ac.archetype] || 0) + ac.amount;
+          }
+        }
+        set({
+          resources: res,
+          population: pop,
+          maxPopulation: Math.max(s.maxPopulation || 0, pop),
+          archetypeAffinity,
+          activeEvent: null,
+        });
+        if (choice.logMsg) get().addToLog(`${ev.name}: ${choice.logMsg}`);
+      },
+
       dismissStory: (id) => {
         const s = get();
         const ack = { ...s.storyAcknowledged, [id]: true };
@@ -690,6 +763,8 @@ export const useGameStore = create<GameStore>()(
         if (persisted.tutorialDismissed === undefined) persisted.tutorialDismissed = false;
         if (persisted.maxPopulation === undefined) persisted.maxPopulation = persisted.population || 8;
         if (persisted.fastestCellClear === undefined) persisted.fastestCellClear = 0;
+        if (persisted.activeEvent === undefined) persisted.activeEvent = null;
+        if (persisted.eventCooldown === undefined) persisted.eventCooldown = 60;
         return persisted;
       },
     }

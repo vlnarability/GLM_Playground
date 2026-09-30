@@ -22,6 +22,7 @@ import { StoryPopup } from "../modals/StoryPopup";
 import { AchievementToast } from "../modals/AchievementToast";
 import { OfflineSummary } from "../modals/OfflineSummary";
 import { SettingsModal } from "../modals/SettingsModal";
+import { EventModal } from "../modals/EventModal";
 import { TutorialHints } from "./TutorialHints";
 
 export function GameShell() {
@@ -72,6 +73,7 @@ export function GameShell() {
       <StoryPopup />
       <AchievementToast />
       <SettingsModal />
+      <EventModal />
       <TutorialHints />
       {offlineSummary && (
         <OfflineSummary

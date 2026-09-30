@@ -9,8 +9,13 @@ export function AchievementToast() {
   const newAchievements = useGameStore((s) => s.newAchievements || []);
   const dismissAchievementToast = useGameStore((s) => s.dismissAchievementToast);
   const setTab = useGameStore((s) => s.setTab);
+  const activeStoryPopup = useGameStore((s) => s.activeStoryPopup);
+  const showEvolve = useGameStore((s) => s.showEvolve);
+  const showSettings = useGameStore((s) => s.showSettings);
 
+  // Don't show toast when a story popup or modal is open (avoids overlap)
   if (newAchievements.length === 0) return null;
+  if (activeStoryPopup || showEvolve || showSettings) return null;
 
   const firstId = newAchievements[0];
   const ach = ACHIEVEMENT_MAP[firstId];

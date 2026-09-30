@@ -160,6 +160,8 @@ export interface GameState {
   showEvolve: boolean;
   showSettings: boolean;
   activeStoryPopup: string | null;
+  activeEvent: string | null; // ID of the currently-offered random event
+  eventCooldown: number; // seconds until next event can fire
   hasSeenIntro: boolean;
   lastSaved: number;
 
@@ -187,6 +189,7 @@ export interface GameStore extends GameState {
   setShowEvolve: (v: boolean) => void;
   setShowSettings: (v: boolean) => void;
   dismissTutorial: () => void;
+  resolveEvent: (eventId: string, choiceId: string) => void;
   dismissStory: (id: string) => void;
   dismissAchievementToast: () => void;
   applyOfflineProgress: () => { elapsed: number; resourcesGained: Record<string, number>; applied: boolean } | null;
