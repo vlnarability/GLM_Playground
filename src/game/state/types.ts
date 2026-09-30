@@ -185,6 +185,8 @@ export interface GameState {
   tutorialStep: number;
   tutorialActive: boolean;
   tutorialDismissed: boolean;
+  // Settings
+  eventFrequency: "off" | "normal" | "frequent";
 }
 
 export interface GameStore extends GameState {
@@ -206,6 +208,7 @@ export interface GameStore extends GameState {
   setShowSettings: (v: boolean) => void;
   dismissTutorial: () => void;
   resolveEvent: (eventId: string, choiceId: string) => void;
+  setEventFrequency: (freq: "off" | "normal" | "frequent") => void;
   dismissStory: (id: string) => void;
   dismissAchievementToast: () => void;
   applyOfflineProgress: () => { elapsed: number; resourcesGained: Record<string, number>; applied: boolean } | null;

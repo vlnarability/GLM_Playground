@@ -74,6 +74,7 @@ function initialMetaState(): Partial<GameState> {
     tutorialStep: 0,
     tutorialActive: true,
     tutorialDismissed: false,
+    eventFrequency: "normal",
   };
 }
 
@@ -224,7 +225,8 @@ export const useGameStore = create<GameStore>()(
         let activeEvent = s.activeEvent;
         let eventCooldown = (s.eventCooldown || 0) - realDt;
         if (eventCooldown < 0) eventCooldown = 0;
-        if (!activeEvent && !activePopup && eventCooldown === 0) {
+        const eventFreq = s.eventFrequency || "normal";
+        if (eventFreq !== "off" && !activeEvent && !activePopup && eventCooldown === 0) {
           const stageId = STAGES[s.stageIndex].id;
           const possible = eventsForStage(stageId, newTime);
           if (possible.length > 0) {
@@ -236,8 +238,11 @@ export const useGameStore = create<GameStore>()(
               cum += ev.weight;
               if (roll < cum) {
                 activeEvent = ev.id;
-                // Set next cooldown: 90-180 seconds
-                eventCooldown = 90 + Math.random() * 90;
+                // Cooldown depends on frequency setting
+                // normal: 90-180s, frequent: 30-60s
+                const base = eventFreq === "frequent" ? 30 : 90;
+                const range = eventFreq === "frequent" ? 30 : 90;
+                eventCooldown = base + Math.random() * range;
                 break;
               }
             }
@@ -613,6 +618,7 @@ export const useGameStore = create<GameStore>()(
       setShowEvolve: (v) => set({ showEvolve: v }),
       setShowSettings: (v) => set({ showSettings: v }),
       dismissTutorial: () => set({ tutorialActive: false, tutorialDismissed: true }),
+      setEventFrequency: (freq) => set({ eventFrequency: freq }),
 
       resolveEvent: (eventId, choiceId) => {
         const s = get();
@@ -817,6 +823,7 @@ export const useGameStore = create<GameStore>()(
         if (persisted.totalActions === undefined) persisted.totalActions = 0;
         if (persisted.totalSystemsBuilt === undefined) persisted.totalSystemsBuilt = 0;
         if (persisted.totalTechResearched === undefined) persisted.totalTechResearched = 0;
+        if (!persisted.eventFrequency) persisted.eventFrequency = "normal";
         return persisted;
       },
     }

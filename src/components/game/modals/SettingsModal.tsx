@@ -13,6 +13,7 @@ import {
   Clock, Users, Star, Award, Database, Keyboard,
 } from "lucide-react";
 import { formatNumber, formatTime } from "../shared/format";
+import { cn } from "@/lib/utils";
 
 export function SettingsModal() {
   const showSettings = useGameStore((s) => s.showSettings);
@@ -21,6 +22,8 @@ export function SettingsModal() {
   const importSave = useGameStore((s) => s.importSave);
   const hardReset = useGameStore((s) => s.hardReset);
   const saveGame = useGameStore((s) => s.saveGame);
+  const eventFrequency = useGameStore((s) => s.eventFrequency || "normal");
+  const setEventFrequency = useGameStore((s) => s.setEventFrequency);
 
   // Game stats
   const time = useGameStore((s) => s.time);
@@ -233,6 +236,38 @@ export function SettingsModal() {
             <Save className="w-3 h-3 mr-1" />
             Save Now
           </Button>
+        </div>
+
+        <Separator className="my-3" />
+
+        {/* Gameplay settings */}
+        <div className="space-y-2">
+          <h3 className="text-sm font-semibold flex items-center gap-1.5">
+            <Settings className="w-4 h-4 text-primary" />
+            Gameplay
+          </h3>
+          <div className="flex items-center justify-between gap-3 py-1">
+            <div>
+              <div className="text-xs font-medium">Event Frequency</div>
+              <div className="text-[0.65rem] text-muted-foreground">How often random events fire.</div>
+            </div>
+            <div className="flex gap-1">
+              {(["off", "normal", "frequent"] as const).map((freq) => (
+                <button
+                  key={freq}
+                  onClick={() => setEventFrequency(freq)}
+                  className={cn(
+                    "px-2.5 py-1 rounded text-xs border transition-colors capitalize",
+                    eventFrequency === freq
+                      ? "border-primary bg-primary/15 text-primary font-semibold"
+                      : "border-border bg-muted/30 text-muted-foreground hover:text-foreground"
+                  )}
+                >
+                  {freq}
+                </button>
+              ))}
+            </div>
+          </div>
         </div>
 
         <Separator className="my-3" />

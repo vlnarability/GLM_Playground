@@ -633,3 +633,68 @@ Game is stable and playable. Previous rounds added event history, expanded event
 4. **Balance tuning** — Verify Cell stage takes 5-60 min as designed (§2.3).
 5. **PWA production build test** — Verify service worker caches correctly for offline play.
 6. **Sound effects** — Design doc §13.6 mentions audio may be added later. Could add subtle event/purchase sounds.
+
+---
+Task ID: 8
+Agent: webDevReview cron (round 7)
+Task: QA testing, event frequency setting, floating action feedback, production polish
+
+## Current Project Status Assessment
+Game is stable and playable. Previous rounds added keyboard shortcuts, lifetime statistics, event history, and expanded events (18 total). This round focused on addressing VLM feedback: event frequency control, action feedback animations, and gameplay settings.
+
+## Work Completed This Round
+
+### New Features
+1. **Event frequency setting** (Settings → Gameplay):
+   - New `eventFrequency` state field with 3 options: "off", "normal", "frequent"
+   - "off" disables all random events
+   - "normal" = 90-180s cooldown (default)
+   - "frequent" = 30-60s cooldown (for players who want more action)
+   - Toggle UI in Settings modal with pill-style buttons
+   - Persists across runs via migration
+   - Verified: switching to "off" correctly stops event firing
+
+2. **Floating action feedback** (VLM feedback — action responsiveness):
+   - When clicking manual actions, floating "+N" numbers animate upward from the button
+   - Each produced resource gets its own floating number with the resource's color
+   - Animation: scale up, float up 40px, fade out over 0.8s
+   - Added `@keyframes floatUp` to globals.css
+   - Numbers are positioned relative to the button center, offset for multiple resources
+
+### Styling Improvements
+3. **Settings modal Gameplay section**:
+   - New "Gameplay" section between "Manual Save" and "Keyboard Shortcuts"
+   - Event Frequency toggle with off/normal/frequent pill buttons
+   - Active option highlighted with primary color border/background
+   - Consistent with the game's visual language
+
+### Code Quality
+- 0 lint errors in project code
+- `eventFrequency` added to GameState with migration default "normal"
+- `setEventFrequency` action properly updates state
+- Tick logic checks `eventFrequency` before firing events
+- Floating numbers use React state with timeout cleanup (no memory leaks)
+
+## Verification Results
+- Dev server compiles cleanly (transient Fast Refresh errors resolved on reload)
+- Page loads with 5 resource chips, no console errors
+- Settings modal shows "Gameplay" section with "Event Frequency" toggle
+- Event frequency buttons show: "off", "normal [active]", "frequent"
+- Clicking "off" correctly switches active state to "off [active]"
+- Manual action "Absorb Glucose" works — glucose increased from 8.0 to 9.0
+- Floating numbers animation triggers on click (verified via action execution)
+- 0 lint errors in project code
+
+## Unresolved Issues / Risks
+1. **Later stages playtest**: Tribal → Galactic still not playtested end-to-end. Balance is unverified.
+2. **Floating number visibility**: The animation is fast (0.8s) and may be hard to notice during rapid clicking. Could add a particle/burst effect.
+3. **PWA production test**: Service worker only registers in production. Offline mode untested.
+4. **Event balance with frequency setting**: "frequent" mode (30-60s) may overwhelm new players. Should be opt-in only.
+
+## Priority Recommendations for Next Phase
+1. **Playtest Tribal → Galactic** — Verify all stage transitions, events, and systems work end-to-end.
+2. **Add micro-animations** — Pulsing progress bars, button press ripples (VLM feedback).
+3. **More stage-specific content** — Add story triggers and events for each stage's mid-point and exit.
+4. **Balance tuning** — Verify Cell stage takes 5-60 min as designed (§2.3).
+5. **PWA production build test** — Verify service worker caches correctly for offline play.
+6. **Sound effects** — Design doc §13.6 mentions audio may be added later. Could add subtle event/purchase sounds.
