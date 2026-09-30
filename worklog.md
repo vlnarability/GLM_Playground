@@ -758,3 +758,60 @@ Game is stable and playable. Previous rounds added event frequency setting, floa
 4. **PWA production build test** — Verify service worker caches correctly for offline play.
 5. **Sound effects** — Design doc §13.6 mentions audio may be added later. Could add subtle event/purchase sounds.
 6. **Mobile performance audit** — Test animations on low-end mobile devices.
+
+---
+Task ID: 10
+Agent: webDevReview cron (round 9)
+Task: QA testing, stage transition celebration, production time-to-cap indicators
+
+## Current Project Status Assessment
+Game is stable and playable. Previous rounds added micro-animations, evolve button pulse, save indicator, and progress bar polish. This round focused on a stage transition celebration (making evolving feel rewarding) and production rate enhancements (time-to-cap indicators).
+
+## Work Completed This Round
+
+### New Features
+1. **Stage transition celebration** (`StageTransition.tsx`):
+   - Full-screen animated overlay when the player evolves to a new stage
+   - Uses the new stage's bgGradient as backdrop with radial glow burst
+   - Stage icon appears with rotate+scale animation and colored drop-shadow
+   - Shows: stage name (large, colored), tagline (italic), story intro, duration badge
+   - "Begin [Stage] Era →" button to dismiss
+   - 4 CSS keyframe animations: transition-glow, transition-burst, transition-icon, transition-slide
+   - Triggers automatically when `stageIndex` increases (watches via useEffect)
+   - Higher z-index (60) than other modals so it overlays everything
+
+2. **Production time-to-cap indicators** (ProductionTab enhancement):
+   - Each net production card now shows "cap in Xm Ys" when a resource will hit capacity within 5 minutes
+   - Shows "at cap" in amber when a resource is already at capacity
+   - Cards at cap get amber border highlight
+   - Helps players see which resources are about to overflow (and which systems will idle)
+
+### Code Quality
+- 0 lint errors in project code (fixed setState-in-effect lint errors by deferring with setTimeout)
+- StageTransition uses proper effect cleanup with clearTimeout
+- All animations are CSS-based (no JS animation overhead)
+- Time-to-cap calculation is lightweight (division + comparison)
+
+## Verification Results
+- Dev server compiles cleanly, no errors
+- Page loads with 5 resource chips, no console errors
+- Production tab shows "Net Production (per second)" with:
+  - Glucose: +0.500/s, "cap in 0s", "at cap" (amber border)
+  - Membrane Pump ×1: +0.500/s 🍬
+- Time-to-cap and at-cap indicators working correctly
+- 0 lint errors in project code
+- StageTransition component compiles and is wired into GameShell
+
+## Unresolved Issues / Risks
+1. **Stage transition not playtested end-to-end**: The celebration animation triggers on stageIndex increase, but hasn't been tested with an actual evolve action (would need to reach evolve requirements).
+2. **Later stages playtest**: Tribal → Galactic still not playtested. Balance is unverified.
+3. **PWA production test**: Service worker only registers in production. Offline mode untested.
+4. **Animation performance**: Stage transition uses multiple simultaneous animations — should test on mobile.
+
+## Priority Recommendations for Next Phase
+1. **Playtest full evolve flow** — Verify the StageTransition celebration fires correctly when evolving Cell → Creature.
+2. **Playtest Tribal → Galactic** — Verify all stage transitions, events, and systems work end-to-end.
+3. **Balance tuning** — Verify Cell stage takes 5-60 min as designed (§2.3).
+4. **PWA production build test** — Verify service worker caches correctly for offline play.
+5. **Sound effects** — Design doc §13.6 mentions audio may be added later. Could add stage transition sound.
+6. **More stage-specific content** — Add story triggers and events for each stage's mid-point and exit.

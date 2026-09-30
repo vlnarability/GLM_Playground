@@ -3,7 +3,7 @@
 import { useGameStore, isSystemCapped } from "@/game/state/store";
 import { SYSTEMS } from "@/game/data/systems";
 import { STAGES } from "@/game/data/stages";
-import { formatNumber, resourceColor, resourceIcon, resourceName } from "../shared/format";
+import { formatNumber, formatTime, resourceColor, resourceIcon, resourceName } from "../shared/format";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Factory, PowerOff, AlertCircle } from "lucide-react";
@@ -61,26 +61,41 @@ export function ProductionTab() {
             </div>
           ) : (
             <>
-              {/* Net production grid */}
+              {/* Net production grid with time-to-cap */}
               <div className="mb-4">
                 <div className="text-xs text-muted-foreground mb-2 uppercase tracking-wide">Net Production (per second)</div>
                 <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-2">
                   {Object.entries(netProd)
                     .sort(([, a], [, b]) => b - a)
-                    .map(([r, rate]) => (
-                      <div key={r} className="stat-card flex items-center gap-2">
-                        <span className="text-base">{resourceIcon(r)}</span>
-                        <div className="min-w-0">
-                          <div className="text-xs text-muted-foreground truncate">{resourceName(r)}</div>
-                          <div
-                            className={`text-sm font-bold tabular-nums ${rate >= 0 ? "text-emerald-400" : "text-red-400"}`}
-                          >
-                            {rate >= 0 ? "+" : "−"}
-                            {formatNumber(Math.abs(rate), 2)}/s
+                    .map(([r, rate]) => {
+                      const current = resources[r] || 0;
+                      const cap = capacities[r] || 0;
+                      const remaining = cap - current;
+                      const timeToCap = rate > 0 && remaining > 0 ? remaining / rate : null;
+                      const atCap = rate > 0 && remaining <= 0.5;
+                      return (
+                        <div key={r} className={`stat-card flex items-center gap-2 ${atCap ? "border-amber-500/40" : ""}`}>
+                          <span className="text-base">{resourceIcon(r)}</span>
+                          <div className="min-w-0 flex-1">
+                            <div className="text-xs text-muted-foreground truncate">{resourceName(r)}</div>
+                            <div
+                              className={`text-sm font-bold tabular-nums ${rate >= 0 ? "text-emerald-400" : "text-red-400"}`}
+                            >
+                              {rate >= 0 ? "+" : "−"}
+                              {formatNumber(Math.abs(rate), 2)}/s
+                            </div>
+                            {timeToCap && timeToCap < 300 && (
+                              <div className="text-[0.6rem] text-amber-400/80 tabular-nums">
+                                cap in {formatTime(timeToCap)}
+                              </div>
+                            )}
+                            {atCap && (
+                              <div className="text-[0.6rem] text-amber-400 font-semibold">at cap</div>
+                            )}
                           </div>
                         </div>
-                      </div>
-                    ))}
+                      );
+                    })}
                 </div>
               </div>
 

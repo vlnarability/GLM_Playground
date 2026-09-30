@@ -24,6 +24,7 @@ import { AchievementToast } from "../modals/AchievementToast";
 import { OfflineSummary } from "../modals/OfflineSummary";
 import { SettingsModal } from "../modals/SettingsModal";
 import { EventModal } from "../modals/EventModal";
+import { StageTransition } from "../modals/StageTransition";
 import { TutorialHints } from "./TutorialHints";
 
 export function GameShell() {
@@ -76,6 +77,7 @@ export function GameShell() {
       <AchievementToast />
       <SettingsModal />
       <EventModal />
+      <StageTransition />
       <TutorialHints />
       {offlineSummary && (
         <OfflineSummary
