@@ -84,6 +84,27 @@ export const UPGRADES: UpgradeDef[] = [
     category: "automation",
     effect: { type: "auto_mult", value: 0.0 },
   },
+  {
+    id: "auto_balancer",
+    name: "Auto-Balancer",
+    desc: (l) => l ? "Systems auto-pause when their output is at capacity, and auto-resume when headroom returns. No wasted upkeep, no overflow." : "Automatically idles systems whose output is full",
+    baseCost: 12,
+    maxLevel: 1,
+    costGrowth: 1.0,
+    requiresWins: 1,
+    category: "automation",
+    effect: { type: "auto_mult", value: 0.0 },
+  },
+  {
+    id: "archetype_insight",
+    name: "Archetype Insight",
+    desc: (l) => l ? "Rare archetypes (Lithoid, Necroid, Toxoid, Extremophile) unlock from your first Galactic win" : "Unlocks rare archetypes after first Galactic win",
+    baseCost: 8,
+    maxLevel: 1,
+    costGrowth: 1.0,
+    category: "prestige",
+    effect: { type: "auto_mult", value: 0.0 },
+  },
 ];
 
 export const UPGRADE_MAP: Record<string, UpgradeDef> = Object.fromEntries(

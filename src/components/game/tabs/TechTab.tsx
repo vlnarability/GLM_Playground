@@ -1,13 +1,15 @@
 "use client";
 
 import { useGameStore } from "@/game/state/store";
-import { techsForStage } from "@/game/data/techs";
+import { techsForStage, TECH_MAP } from "@/game/data/techs";
 import { STAGES } from "@/game/data/stages";
+import { ARCHETYPE_MAP } from "@/game/data/archetypes";
 import { formatNumber, resourceColor, resourceIcon } from "../shared/format";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { CheckCircle2, Lock, GitBranch } from "lucide-react";
+import { cn } from "@/lib/utils";
 
 export function TechTab() {
   const stageIndex = useGameStore((s) => s.stageIndex);
@@ -60,7 +62,7 @@ export function TechTab() {
                   return (
                     <div
                       key={tech.id}
-                      className={`stat-card transition-opacity ${owned ? "opacity-60" : !prereqMet ? "opacity-40" : ""}`}
+                      className={`stat-card transition-opacity ${owned ? "opacity-60" : !prereqMet ? "opacity-50" : ""}`}
                     >
                       <div className="flex items-start justify-between gap-2 mb-1">
                         <div className="flex items-center gap-2 min-w-0">
@@ -75,11 +77,48 @@ export function TechTab() {
                             <div className="text-sm font-semibold leading-tight truncate">
                               {tech.name}
                             </div>
-                            <Badge variant="outline" className="text-[0.6rem] mt-0.5">Tier {tech.tier}</Badge>
+                            <Badge variant="outline" className="text-[0.6rem] mt-0.5">Tier {tech.tier} · {tech.branch}</Badge>
                           </div>
                         </div>
                       </div>
                       <p className="text-xs text-muted-foreground mb-2 leading-snug">{tech.desc}</p>
+                      {/* Prerequisite list */}
+                      {!owned && tech.requires && tech.requires.length > 0 && (
+                        <div className="flex flex-wrap items-center gap-1 mb-2 text-xs">
+                          <span className="text-muted-foreground">Requires:</span>
+                          {tech.requires.map((req) => {
+                            const met = technologies[req];
+                            const reqTech = TECH_MAP[req];
+                            return (
+                              <span
+                                key={req}
+                                className={cn(
+                                  "px-1.5 py-0.5 rounded border text-[0.65rem]",
+                                  met
+                                    ? "border-emerald-500/30 text-emerald-400 bg-emerald-500/5"
+                                    : "border-red-500/30 text-red-400 bg-red-500/5"
+                                )}
+                              >
+                                {met ? "✓" : "✗"} {reqTech?.name || req}
+                              </span>
+                            );
+                          })}
+                        </div>
+                      )}
+                      {/* Affinity grant */}
+                      {tech.grantsAffinity && (
+                        <Badge
+                          variant="outline"
+                          className="text-[0.6rem] mb-2"
+                          style={{
+                            borderColor: `${ARCHETYPE_MAP[tech.grantsAffinity.archetype].color}50`,
+                            color: ARCHETYPE_MAP[tech.grantsAffinity.archetype].color,
+                          }}
+                          title={`Shifts lineage toward ${ARCHETYPE_MAP[tech.grantsAffinity.archetype].name}`}
+                        >
+                          {ARCHETYPE_MAP[tech.grantsAffinity.archetype].glyph} {ARCHETYPE_MAP[tech.grantsAffinity.archetype].name} drift +{tech.grantsAffinity.amount}
+                        </Badge>
+                      )}
                       <div className="flex flex-wrap items-center gap-2">
                         {!owned && (
                           <div className="flex flex-wrap gap-2 text-xs">

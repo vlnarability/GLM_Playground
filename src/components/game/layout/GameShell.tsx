@@ -27,28 +27,22 @@ export function GameShell() {
 
   return (
     <div className="min-h-screen flex flex-col">
-      {/* Cosmic background */}
-      <div
-        className="cosmic-bg transition-all duration-1000"
-        style={{
-          background: `
-            radial-gradient(circle at 20% 10%, ${stage.accent}25 0%, transparent 40%),
-            radial-gradient(circle at 80% 90%, ${stage.accent}15 0%, transparent 45%),
-            radial-gradient(circle at 50% 50%, ${stage.accent}08 0%, transparent 60%),
-            linear-gradient(180deg, #0a0a1a 0%, #050510 100%)
-          `,
-        }}
-      />
-      <div className="cosmic-stars" />
+      {/* Background layers */}
+      <div className="bg-layer-1" />
+      <div className="bg-layer-2" />
+      <div className="bg-vignette" />
 
       <Header />
 
-      <main className="flex-1 max-w-7xl w-full mx-auto px-3 sm:px-4 py-4 space-y-4 relative z-10">
-        <ResourceBar />
+      {/* Sticky resource bar — scrolls with the header, stays pinned under it */}
+      <ResourceBar />
 
+      <main className="flex-1 max-w-7xl w-full mx-auto px-3 sm:px-4 py-4 relative z-10">
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
           <div className="lg:col-span-4 xl:col-span-3">
-            <StagePanel />
+            <div className="lg:sticky lg:top-[112px]">
+              <StagePanel />
+            </div>
           </div>
           <div className="lg:col-span-8 xl:col-span-9">
             <TabNav />

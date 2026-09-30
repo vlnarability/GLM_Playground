@@ -71,6 +71,7 @@ export const SYSTEMS: SystemDef[] = [
     costGrowth: 1.5,
     produces: { atp: 0.2 },
     maxOwned: 1,
+    grantsAffinity: { archetype: "humanoid", amount: 2 },
   },
 
   // ===== CREATURE =====
@@ -107,6 +108,7 @@ export const SYSTEMS: SystemDef[] = [
     costGrowth: 1.25,
     produces: {},
     capacityBoost: { food: 15, water: 10, materials: 10 },
+    grantsAffinity: { archetype: "mammalian", amount: 1 },
   },
   {
     id: "tool_cache",
@@ -165,6 +167,7 @@ export const SYSTEMS: SystemDef[] = [
     costGrowth: 1.22,
     produces: { lumber: 0.8 },
     upkeep: { wood: 0.3 },
+    grantsAffinity: { archetype: "arthropoid", amount: 1 },
   },
   {
     id: "quarry",
@@ -257,6 +260,7 @@ export const SYSTEMS: SystemDef[] = [
     baseCost: { production: 20, gold: 8 },
     costGrowth: 1.24,
     produces: { military_power: 1.0 },
+    grantsAffinity: { archetype: "reptilian", amount: 2 },
   },
   {
     id: "temple",
@@ -268,6 +272,7 @@ export const SYSTEMS: SystemDef[] = [
     baseCost: { production: 30, gold: 15, stone: 20 },
     costGrowth: 1.26,
     produces: { culture: 0.8, happiness: 0.5 },
+    grantsAffinity: { archetype: "necroid", amount: 2 },
   },
 
   // ===== EMPIRE =====
@@ -317,6 +322,7 @@ export const SYSTEMS: SystemDef[] = [
     baseCost: { energy: 30, alloys: 10 },
     costGrowth: 1.22,
     produces: { energy: 4.0 },
+    grantsAffinity: { archetype: "plantoid", amount: 1 },
   },
   {
     id: "orbital_forge",

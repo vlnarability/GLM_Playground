@@ -1,38 +1,63 @@
 "use client";
 
-import { useGameStore } from "@/game/state/store";
-import { systemsForStage } from "@/game/data/systems";
+import { useGameStore, isSystemCapped } from "@/game/state/store";
+import { systemsForStage, systemCost, SYSTEM_MAP } from "@/game/data/systems";
 import { STAGES } from "@/game/data/stages";
-import { systemCost } from "@/game/data/systems";
+import { TECH_MAP } from "@/game/data/techs";
 import { formatNumber, resourceColor, resourceIcon, resourceName } from "../shared/format";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { ARCHETYPE_MAP } from "@/game/data/archetypes";
 import { useState } from "react";
-import { Plus, Minus, Lock } from "lucide-react";
+import { Plus, Minus, Lock, Power, PowerOff, AlertCircle } from "lucide-react";
+import { cn } from "@/lib/utils";
 
 export function SystemsTab() {
   const stageIndex = useGameStore((s) => s.stageIndex);
   const resources = useGameStore((s) => s.resources);
+  const capacities = useGameStore((s) => s.capacities);
   const ownedSystems = useGameStore((s) => s.ownedSystems);
+  const systemEnabled = useGameStore((s) => s.systemEnabled);
+  const technologies = useGameStore((s) => s.technologies);
   const upgrades = useGameStore((s) => s.upgrades);
   const buySystem = useGameStore((s) => s.buySystem);
+  const toggleSystem = useGameStore((s) => s.toggleSystem);
+  const enableAllSystems = useGameStore((s) => s.enableAllSystems);
 
   const stage = STAGES[stageIndex];
   const systems = systemsForStage(stage.id);
   const costReduction = (upgrades["frugality"] || 0) * 0.04;
+  const hasAutoBalancer = (upgrades["auto_balancer"] || 0) > 0;
+
+  const ownedCount = systems.filter((s) => (ownedSystems[s.id] || 0) > 0).length;
 
   return (
     <div className="space-y-4">
       <Card className="glass-panel">
         <CardHeader className="pb-2">
-          <CardTitle className="text-base flex items-center gap-2">
-            <span className="text-xl">{stage.icon}</span>
-            {stage.name} Systems
-          </CardTitle>
-          <CardDescription>
-            Buy and upgrade buildings. Each purchase costs more than the last. Production runs automatically.
-          </CardDescription>
+          <div className="flex items-start justify-between gap-2">
+            <div>
+              <CardTitle className="text-base flex items-center gap-2">
+                <span className="text-xl">{stage.icon}</span>
+                {stage.name} Systems
+              </CardTitle>
+              <CardDescription className="mt-1">
+                Buy and upgrade buildings. Toggle individual systems on/off to balance your economy.
+                {hasAutoBalancer && " Auto-Balancer active — capped systems idle automatically."}
+              </CardDescription>
+            </div>
+            {ownedCount > 0 && (
+              <div className="flex gap-1 shrink-0">
+                <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => enableAllSystems(true)}>
+                  <Power className="w-3 h-3 mr-1" /> All
+                </Button>
+                <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => enableAllSystems(false)}>
+                  <PowerOff className="w-3 h-3 mr-1" /> None
+                </Button>
+              </div>
+            )}
+          </div>
         </CardHeader>
       </Card>
 
@@ -50,6 +75,10 @@ export function SystemsTab() {
             const cost = systemCost(sys, owned, costReduction);
             const canAfford = Object.entries(cost).every(([r, v]) => (resources[r] || 0) >= (v as number));
             const atMax = sys.maxOwned ? owned >= sys.maxOwned : false;
+            const techLocked = sys.requiredTech && !technologies[sys.requiredTech];
+            const enabled = systemEnabled[sys.id] !== false;
+            const capped = owned > 0 && isSystemCapped(sys.id, resources, capacities);
+
             return (
               <SystemCard
                 key={sys.id}
@@ -58,7 +87,12 @@ export function SystemsTab() {
                 cost={cost}
                 canAfford={canAfford}
                 atMax={atMax}
+                techLocked={!!techLocked}
+                requiredTechName={techLocked ? TECH_MAP[sys.requiredTech!]?.name : undefined}
+                enabled={enabled}
+                capped={capped}
                 onBuy={(qty) => buySystem(sys.id, qty)}
+                onToggle={() => toggleSystem(sys.id)}
               />
             );
           })}
@@ -74,17 +108,24 @@ interface SystemCardProps {
   cost: Partial<Record<string, number>>;
   canAfford: boolean;
   atMax: boolean;
+  techLocked: boolean;
+  requiredTechName?: string;
+  enabled: boolean;
+  capped: boolean;
   onBuy: (qty: number) => void;
+  onToggle: () => void;
 }
 
-function SystemCard({ sys, owned, cost, canAfford, atMax, onBuy }: SystemCardProps) {
+function SystemCard({ sys, owned, cost, canAfford, atMax, techLocked, requiredTechName, enabled, capped, onBuy, onToggle }: SystemCardProps) {
   const [qty, setQty] = useState(1);
   const resources = useGameStore((s) => s.resources);
+  const archDef = sys.grantsAffinity ? ARCHETYPE_MAP[sys.grantsAffinity.archetype] : null;
+
   return (
-    <Card className="glass-panel relative overflow-hidden">
+    <Card className={cn("glass-panel relative overflow-hidden", !enabled && owned > 0 && "opacity-60")}>
       <div
-        className="absolute top-0 left-0 right-0 h-1"
-        style={{ background: `linear-gradient(90deg, var(--primary) 0%, transparent 100%)` }}
+        className="absolute top-0 left-0 right-0 h-0.5"
+        style={{ background: capped ? "#f59e0b" : "linear-gradient(90deg, var(--primary) 0%, transparent 100%)" }}
       />
       <CardHeader className="pb-2">
         <div className="flex items-start justify-between gap-2">
@@ -93,14 +134,57 @@ function SystemCard({ sys, owned, cost, canAfford, atMax, onBuy }: SystemCardPro
             <div className="min-w-0">
               <CardTitle className="text-sm leading-tight">{sys.name}</CardTitle>
               <CardDescription className="text-xs mt-0.5 leading-snug">{sys.desc}</CardDescription>
+              {archDef && (
+                <Badge
+                  variant="outline"
+                  className="text-[0.6rem] mt-1"
+                  style={{ borderColor: `${archDef.color}50`, color: archDef.color }}
+                  title={`Grants ${archDef.name} lineage affinity`}
+                >
+                  {archDef.glyph} {archDef.name} drift +{sys.grantsAffinity!.amount}
+                </Badge>
+              )}
             </div>
           </div>
           {owned > 0 && (
-            <Badge variant="secondary" className="shrink-0">×{owned}</Badge>
+            <div className="flex items-center gap-1 shrink-0">
+              <Badge variant="secondary" className="text-xs">×{owned}</Badge>
+              <Button
+                size="sm"
+                variant="ghost"
+                className="h-6 w-6 p-0"
+                onClick={onToggle}
+                title={enabled ? "Disable (idle this system)" : "Enable"}
+              >
+                {enabled ? <Power className="w-3.5 h-3.5 text-emerald-400" /> : <PowerOff className="w-3.5 h-3.5 text-muted-foreground" />}
+              </Button>
+            </div>
           )}
         </div>
       </CardHeader>
       <CardContent className="space-y-2">
+        {/* Capped warning */}
+        {capped && owned > 0 && enabled && (
+          <div className="flex items-center gap-1.5 text-xs text-amber-500 bg-amber-500/10 border border-amber-500/30 rounded px-2 py-1">
+            <AlertCircle className="w-3 h-3 shrink-0" />
+            <span>Output at capacity — idling to save upkeep</span>
+          </div>
+        )}
+        {!enabled && owned > 0 && (
+          <div className="flex items-center gap-1.5 text-xs text-muted-foreground bg-muted/30 border border-border rounded px-2 py-1">
+            <PowerOff className="w-3 h-3 shrink-0" />
+            <span>Disabled — no production, no upkeep</span>
+          </div>
+        )}
+
+        {/* Tech prereq */}
+        {techLocked && (
+          <div className="flex items-center gap-1.5 text-xs text-red-400 bg-red-500/10 border border-red-500/30 rounded px-2 py-1">
+            <Lock className="w-3 h-3 shrink-0" />
+            <span>Requires tech: <span className="font-semibold">{requiredTechName}</span></span>
+          </div>
+        )}
+
         {/* Production / effects */}
         {Object.keys(sys.produces).length > 0 && (
           <div className="flex flex-wrap gap-1 text-xs">
@@ -141,7 +225,7 @@ function SystemCard({ sys, owned, cost, canAfford, atMax, onBuy }: SystemCardPro
               const enough = have >= (v as number);
               return (
                 <span key={r} className={enough ? "" : "text-red-400"} style={enough ? { color: resourceColor(r) } : undefined}>
-                  {resourceIcon(r)}{formatNumber(v as number, 0)}
+                  {resourceIcon(r)}{formatNumber(v as number)}
                 </span>
               );
             })}
@@ -160,10 +244,10 @@ function SystemCard({ sys, owned, cost, canAfford, atMax, onBuy }: SystemCardPro
           <Button
             size="sm"
             className="h-7 ml-auto flex-1"
-            disabled={!canAfford || atMax}
+            disabled={!canAfford || atMax || techLocked}
             onClick={() => onBuy(qty)}
           >
-            {atMax ? "Max owned" : `Build ${qty > 1 ? `×${qty}` : ""}`}
+            {atMax ? "Max owned" : techLocked ? "Locked" : `Build ${qty > 1 ? `×${qty}` : ""}`}
           </Button>
         </div>
       </CardContent>

@@ -2,16 +2,37 @@
 
 import { RESOURCES, RESOURCE_MAP } from "@/game/data/resources";
 
+// Format a number for display. Shows decimals for small/partial values
+// so that fractional production (e.g. +0.3/s) is always visible.
 export function formatNumber(n: number, digits = 1): string {
   if (n === undefined || n === null || isNaN(n)) return "0";
   const abs = Math.abs(n);
-  if (abs < 1) return n.toFixed(digits);
-  if (abs < 1000) return n.toFixed(abs < 10 ? digits : 0);
+  // Very small non-zero values: show with enough precision to be visible
+  if (abs > 0 && abs < 0.01) return n.toFixed(3);
+  if (abs < 1) return n.toFixed(digits + 1);
+  if (abs < 10) return n.toFixed(digits);
+  if (abs < 1000) {
+    // Show one decimal if there's a fractional part, else integer
+    return Number.isInteger(n) ? n.toFixed(0) : n.toFixed(digits);
+  }
   if (abs < 1e6) return (n / 1e3).toFixed(digits) + "K";
   if (abs < 1e9) return (n / 1e6).toFixed(digits) + "M";
   if (abs < 1e12) return (n / 1e9).toFixed(digits) + "B";
   if (abs < 1e15) return (n / 1e12).toFixed(digits) + "T";
   return n.toExponential(2);
+}
+
+// Compact format for headers (always 1 decimal under 1K, no decimals above)
+export function formatCompact(n: number): string {
+  if (n === undefined || n === null || isNaN(n)) return "0";
+  const abs = Math.abs(n);
+  if (abs < 1) return n.toFixed(2);
+  if (abs < 100) return n.toFixed(1);
+  if (abs < 1e3) return Math.floor(n).toString();
+  if (abs < 1e6) return (n / 1e3).toFixed(1) + "K";
+  if (abs < 1e9) return (n / 1e6).toFixed(1) + "M";
+  if (abs < 1e12) return (n / 1e9).toFixed(1) + "B";
+  return n.toExponential(1);
 }
 
 export function formatTime(seconds: number): string {

@@ -1,17 +1,19 @@
 "use client";
 
-import { useGameStore } from "@/game/state/store";
+import { useGameStore, isSystemCapped } from "@/game/state/store";
 import { SYSTEMS } from "@/game/data/systems";
 import { STAGES } from "@/game/data/stages";
 import { formatNumber, resourceColor, resourceIcon, resourceName } from "../shared/format";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Factory } from "lucide-react";
+import { Factory, PowerOff, AlertCircle } from "lucide-react";
 
 export function ProductionTab() {
   const stageIndex = useGameStore((s) => s.stageIndex);
   const ownedSystems = useGameStore((s) => s.ownedSystems);
   const resources = useGameStore((s) => s.resources);
+  const capacities = useGameStore((s) => s.capacities);
+  const systemEnabled = useGameStore((s) => s.systemEnabled);
   const upgrades = useGameStore((s) => s.upgrades);
 
   const stage = STAGES[stageIndex];
@@ -99,12 +101,16 @@ export function ProductionTab() {
                       const count = ownedSystems[sys.id];
                       const stageMult = sys.stage === stage.id ? 1 : 0.5;
                       const mult = autoMult * stageMult;
+                      const capped = isSystemCapped(sys.id, resources, capacities);
+                      const enabled = systemEnabled[sys.id] !== false;
                       return (
                         <div key={sys.id} className="stat-card flex items-center gap-2">
                           <span className="text-xl">{sys.icon}</span>
                           <div className="min-w-0 flex-1">
-                            <div className="text-sm font-medium truncate">
+                            <div className="text-sm font-medium truncate flex items-center gap-1">
                               {sys.name} <span className="text-muted-foreground text-xs">×{count}</span>
+                              {!enabled && <PowerOff className="w-3 h-3 text-muted-foreground" />}
+                              {capped && enabled && <AlertCircle className="w-3 h-3 text-amber-500" />}
                             </div>
                             <div className="text-xs flex flex-wrap gap-2">
                               {Object.entries(sys.produces).map(([r, v]) => (

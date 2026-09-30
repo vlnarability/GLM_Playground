@@ -50,6 +50,7 @@ export interface SystemDef {
   upkeep?: Partial<Record<ResourceId, number>>;
   maxOwned?: number;
   requiredTech?: string;
+  grantsAffinity?: { archetype: string; amount: number };
 }
 
 export interface TechDef {
@@ -63,6 +64,7 @@ export interface TechDef {
   requires?: string[];
   effects: string;
   multiplier?: { target: "production" | "manual" | "capacity"; value: number };
+  grantsAffinity?: { archetype: string; amount: number };
 }
 
 export interface StageDef {
@@ -124,10 +126,14 @@ export interface GameState {
   stageIndex: number;
   time: number;
   population: number;
+  populationProgress: number; // 0-1 toward next population point
   resources: Record<string, number>;
   capacities: Record<string, number>;
   ownedSystems: Record<string, number>;
+  systemEnabled: Record<string, boolean>; // per-system on/off toggle
   technologies: Record<string, boolean>;
+  archetypeAffinity: Record<string, number>; // drift during run
+  lockedArchetype: string | null; // locked at Creature→Tribal
   log: string[];
 
   // Meta state
@@ -162,6 +168,8 @@ export interface GameStore extends GameState {
   tick: (dt: number) => void;
   performAction: (actionId: string) => void;
   buySystem: (systemId: string, qty: number) => void;
+  toggleSystem: (systemId: string) => void;
+  enableAllSystems: (enabled: boolean) => void;
   buyTech: (techId: string) => void;
   buyUpgrade: (upgradeId: string) => void;
   evolveStage: () => void;

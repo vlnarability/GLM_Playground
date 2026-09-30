@@ -2,23 +2,30 @@
 
 import { useGameStore } from "@/game/state/store";
 import { STAGES } from "@/game/data/stages";
-import { SYSTEMS } from "@/game/data/systems";
-import { TECHS } from "@/game/data/techs";
-import { formatNumber, formatTime } from "../shared/format";
+import { ARCHETYPES, ARCHETYPE_MAP, dominantArchetype } from "@/game/data/archetypes";
+import { formatNumber } from "../shared/format";
 import { cn } from "@/lib/utils";
-import { Progress } from "@/components/ui/progress";
 import { Button } from "@/components/ui/button";
-import { Users, Star, Clock, TrendingUp, Sparkles } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { Users, Star, TrendingUp, Sparkles, Dna, Info } from "lucide-react";
+import { useState } from "react";
 
 export function StagePanel() {
   const stageIndex = useGameStore((s) => s.stageIndex);
   const population = useGameStore((s) => s.population);
+  const populationProgress = useGameStore((s) => s.populationProgress);
   const time = useGameStore((s) => s.time);
   const resources = useGameStore((s) => s.resources);
   const ownedSystems = useGameStore((s) => s.ownedSystems);
   const technologies = useGameStore((s) => s.technologies);
   const setShowEvolve = useGameStore((s) => s.setShowEvolve);
   const upgrades = useGameStore((s) => s.upgrades);
+  const archetypeAffinity = useGameStore((s) => s.archetypeAffinity);
+  const lockedArchetype = useGameStore((s) => s.lockedArchetype);
+  const galacticWins = useGameStore((s) => s.galacticWins);
+
+  const [showPopInfo, setShowPopInfo] = useState(false);
+  const [showArchInfo, setShowArchInfo] = useState(false);
 
   const stage = STAGES[stageIndex];
   const totalSystems = Object.values(ownedSystems).reduce((a, b) => a + b, 0);
@@ -33,86 +40,208 @@ export function StagePanel() {
   const scorePct = Math.min(100, (score / (reqs.minScore * evolveBoost)) * 100);
   const canEvolve = popPct >= 100 && sysPct >= 100 && techPct >= 100 && scorePct >= 100;
 
+  // Archetype drift
+  const hasAffinity = Object.values(archetypeAffinity).some((v) => v > 0);
+  const domArch = dominantArchetype(archetypeAffinity);
+  const totalAffinity = Object.values(archetypeAffinity).reduce((a, b) => a + b, 0);
+  const archInsight = true; // always visible — players should see their drift building
+  const isLocked = !!lockedArchetype;
+
   return (
     <div className="glass-panel rounded-xl p-4 relative overflow-hidden">
-      {/* Accent glow */}
+      {/* Accent corner mark — like a stamped seal */}
       <div
-        className="absolute -top-12 -right-12 w-48 h-48 rounded-full blur-3xl opacity-30 pointer-events-none"
-        style={{ background: stage.accent }}
+        className="absolute top-0 right-0 w-16 h-16 pointer-events-none"
+        style={{
+          background: `linear-gradient(225deg, ${stage.accent}25 0%, transparent 60%)`,
+        }}
       />
+      <div
+        className="absolute top-2 right-2 text-[0.6rem] font-mono uppercase tracking-widest text-muted-foreground/60"
+      >
+        {stageIndex + 1}/{STAGES.length}
+      </div>
 
-      <div className="flex items-start justify-between mb-3 relative">
-        <div>
-          <div className="flex items-center gap-2">
-            <span className="text-3xl leading-none">{stage.icon}</span>
-            <div>
-              <h2 className="text-xl font-bold tracking-tight">{stage.name}</h2>
-              <p className="text-xs text-muted-foreground italic">{stage.tagline}</p>
-            </div>
-          </div>
-        </div>
-        <div className="text-right">
-          <div className="text-xs text-muted-foreground uppercase tracking-wide">Stage</div>
-          <div className="text-sm font-semibold">
-            {stageIndex + 1} / {STAGES.length}
+      {/* Header */}
+      <div className="mb-3">
+        <div className="flex items-center gap-2 mb-1">
+          <span className="text-3xl leading-none">{stage.icon}</span>
+          <div>
+            <h2 className="text-xl font-bold tracking-tight leading-none">{stage.name}</h2>
+            <p className="text-xs text-muted-foreground italic mt-0.5">{stage.tagline}</p>
           </div>
         </div>
       </div>
 
-      {/* Stage art portal */}
+      {/* Stage art panel — less glowy, more like a specimen plate */}
       <div
-        className="stage-portal mb-3 flex items-center justify-center"
-        style={{ background: stage.bgGradient }}
+        className="stage-plate mb-3 flex items-center justify-center relative"
+        style={{
+          background: stage.bgGradient,
+          borderColor: `${stage.accent}40`,
+        }}
       >
-        <div className="relative z-10 text-center">
-          <div className="text-6xl mb-1 animate-pulse" style={{ filter: `drop-shadow(0 0 20px ${stage.accent})` }}>
+        <div className="relative z-10 text-center py-6">
+          <div
+            className="text-5xl mb-1"
+            style={{ filter: `drop-shadow(0 0 12px ${stage.accent}80)` }}
+          >
             {stage.icon}
           </div>
-          <div className="text-xs text-white/70 font-medium uppercase tracking-widest">
-            {stage.name} Era · {stage.duration}
+          <div className="text-[0.6rem] text-white/60 font-mono uppercase tracking-[0.2em]">
+            {stage.name} · {stage.duration}
           </div>
         </div>
       </div>
 
       <p className="text-sm text-muted-foreground mb-3 leading-relaxed">{stage.desc}</p>
 
-      {/* Stats grid */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-2 mb-3">
-        <StatBox
-          icon={<Users className="w-3.5 h-3.5" />}
-          label="Population"
-          value={formatNumber(population, 0)}
-          sub={population > reqs.minPopulation * evolveBoost ? "✓ ready" : `need ${formatNumber(reqs.minPopulation * evolveBoost, 0)}`}
-          ok={population >= reqs.minPopulation * evolveBoost}
-        />
-        <StatBox
-          icon={<Sparkles className="w-3.5 h-3.5" />}
+      {/* Population stat with growth progress */}
+      <div className="stat-card mb-2">
+        <div className="flex items-center justify-between mb-1">
+          <div className="flex items-center gap-1.5 text-muted-foreground text-xs">
+            <Users className="w-3.5 h-3.5" />
+            <span className="uppercase tracking-wide">Population</span>
+          </div>
+          <button
+            onClick={() => setShowPopInfo(!showPopInfo)}
+            className="text-muted-foreground hover:text-foreground transition-colors"
+            title="How does population grow?"
+          >
+            <Info className="w-3.5 h-3.5" />
+          </button>
+        </div>
+        <div className="flex items-baseline gap-2">
+          <span className="text-2xl font-bold tabular-nums">{Math.floor(population)}</span>
+          <span className="text-xs text-muted-foreground">
+            +{(populationProgress * 100).toFixed(0)}% toward next
+          </span>
+        </div>
+        <div className="mt-1.5 h-1.5 rounded-full bg-muted/40 overflow-hidden">
+          <div
+            className="h-full bg-cyan-400 transition-all"
+            style={{ width: `${populationProgress * 100}%` }}
+          />
+        </div>
+        {showPopInfo && (
+          <div className="mt-2 text-xs text-muted-foreground bg-muted/30 border border-border rounded p-2 leading-relaxed">
+            <p className="font-semibold text-foreground mb-1">How population grows</p>
+            <p>Population accrues continuously. The growth rate scales with <span className="text-amber-400">happiness</span> — high happiness (+30%), low happiness (−10%).</p>
+            {["creature", "tribal", "civilization", "empire"].includes(stage.id) && (
+              <p className="mt-1">From {stage.name} onward, critically low <span className="text-emerald-400">food</span> or <span className="text-blue-400">water</span> (under 10% of capacity) cuts growth by 70%.</p>
+            )}
+          </div>
+        )}
+      </div>
+
+      {/* Stats grid (3 — systems/tech/score) */}
+      <div className="grid grid-cols-3 gap-2 mb-3">
+        <MiniStat
+          icon={<Sparkles className="w-3 h-3" />}
           label="Systems"
           value={formatNumber(totalSystems, 0)}
-          sub={totalSystems >= reqs.minSystems * evolveBoost ? "✓ ready" : `need ${reqs.minSystems * evolveBoost}`}
           ok={totalSystems >= reqs.minSystems * evolveBoost}
+          need={formatNumber(reqs.minSystems * evolveBoost, 0)}
         />
-        <StatBox
-          icon={<TrendingUp className="w-3.5 h-3.5" />}
+        <MiniStat
+          icon={<TrendingUp className="w-3 h-3" />}
           label="Tech"
           value={formatNumber(totalTech, 0)}
-          sub={totalTech >= reqs.minTech * evolveBoost ? "✓ ready" : `need ${reqs.minTech * evolveBoost}`}
           ok={totalTech >= reqs.minTech * evolveBoost}
+          need={formatNumber(reqs.minTech * evolveBoost, 0)}
         />
-        <StatBox
-          icon={<Star className="w-3.5 h-3.5" />}
+        <MiniStat
+          icon={<Star className="w-3 h-3" />}
           label="Score"
           value={formatNumber(score, 0)}
-          sub={score >= reqs.minScore * evolveBoost ? "✓ ready" : `need ${formatNumber(reqs.minScore * evolveBoost, 0)}`}
           ok={score >= reqs.minScore * evolveBoost}
+          need={formatNumber(reqs.minScore * evolveBoost, 0)}
         />
       </div>
 
+      {/* Archetype / Lineage panel */}
+      <div className="stat-card mb-3">
+        <div className="flex items-center justify-between mb-2">
+          <div className="flex items-center gap-1.5 text-muted-foreground text-xs">
+            <Dna className="w-3.5 h-3.5" />
+            <span className="uppercase tracking-wide">Lineage</span>
+          </div>
+          <button
+            onClick={() => setShowArchInfo(!showArchInfo)}
+            className="text-muted-foreground hover:text-foreground transition-colors"
+            title="How does lineage work?"
+          >
+            <Info className="w-3.5 h-3.5" />
+          </button>
+        </div>
+
+        {showArchInfo && (
+          <div className="mb-2 text-xs text-muted-foreground bg-muted/30 border border-border rounded p-2 leading-relaxed">
+            <p className="font-semibold text-foreground mb-1">Lineage & Archetypes</p>
+            <p>Buying certain systems and techs shifts your <span className="text-foreground">lineage drift</span> toward one of 13 archetypes. When you evolve from <span className="text-foreground">Creature → Tribal</span>, the dominant archetype <span className="text-foreground">locks in</span> for the rest of the run and grants a permanent bonus.</p>
+            <p className="mt-1">Choose your path deliberately — or let it emerge from how you play.</p>
+          </div>
+        )}
+
+        {isLocked ? (
+          <LockedArchetypeDisplay archId={lockedArchetype!} />
+        ) : hasAffinity && archInsight ? (
+          <div className="space-y-1.5">
+            {ARCHETYPES
+              .filter((a) => (archetypeAffinity[a.id] || 0) > 0)
+              .sort((a, b) => (archetypeAffinity[b.id] || 0) - (archetypeAffinity[a.id] || 0))
+              .map((a) => {
+                const v = archetypeAffinity[a.id] || 0;
+                const pct = totalAffinity > 0 ? (v / totalAffinity) * 100 : 0;
+                const isDom = a.id === domArch;
+                return (
+                  <div key={a.id} className="flex items-center gap-2">
+                    <span
+                      className="text-xs font-mono w-5 text-center"
+                      style={{ color: a.color }}
+                    >
+                      {a.glyph}
+                    </span>
+                    <span className={`text-xs w-20 shrink-0 ${isDom ? "font-bold" : ""}`} style={{ color: isDom ? a.color : undefined }}>
+                      {a.name}
+                    </span>
+                    <div className="flex-1 h-1.5 rounded-full bg-muted/40 overflow-hidden">
+                      <div
+                        className="h-full transition-all"
+                        style={{ width: `${pct}%`, background: a.color }}
+                      />
+                    </div>
+                    <span className="text-[0.65rem] text-muted-foreground w-8 text-right tabular-nums">
+                      {v.toFixed(0)}
+                    </span>
+                  </div>
+                );
+              })}
+            {stageIndex < 1 && (
+              <p className="text-[0.65rem] text-muted-foreground italic mt-1">
+                Lineage locks at Creature → Tribal evolution
+              </p>
+            )}
+            {stageIndex >= 1 && (
+              <p className="text-[0.65rem] text-amber-400 italic mt-1">
+                Will lock as {ARCHETYPE_MAP[domArch!]?.name} on evolution
+              </p>
+            )}
+          </div>
+        ) : (
+          <div className="text-xs text-muted-foreground italic">
+            {stageIndex < 1
+              ? "Drift begins as you build. Locked at Creature → Tribal."
+              : "No drift yet — build systems or research tech to find your path."}
+          </div>
+        )}
+      </div>
+
       {/* Evolve progress */}
-      <div className="space-y-2 mb-3">
+      <div className="space-y-1.5 mb-3">
         <ProgressRow label="Population" pct={popPct} color="bg-cyan-400" />
         <ProgressRow label="Systems" pct={sysPct} color="bg-violet-400" />
-        <ProgressRow label="Technology" pct={techPct} color="bg-amber-400" />
+        <ProgressRow label="Tech" pct={techPct} color="bg-amber-400" />
         <ProgressRow label="Score" pct={scorePct} color="bg-emerald-400" />
       </div>
 
@@ -134,15 +263,37 @@ export function StagePanel() {
   );
 }
 
-function StatBox({ icon, label, value, sub, ok }: { icon: React.ReactNode; label: string; value: string; sub: string; ok: boolean }) {
+function LockedArchetypeDisplay({ archId }: { archId: string }) {
+  const arch = ARCHETYPE_MAP[archId];
+  if (!arch) return null;
   return (
-    <div className="stat-card">
-      <div className="flex items-center gap-1 text-muted-foreground text-xs mb-1">
-        {icon}
-        <span className="uppercase tracking-wide">{label}</span>
+    <div className="space-y-1.5">
+      <div className="flex items-center gap-2">
+        <span className="text-lg font-mono" style={{ color: arch.color }}>{arch.glyph}</span>
+        <div>
+          <div className="text-sm font-bold" style={{ color: arch.color }}>{arch.name}</div>
+          <div className="text-[0.65rem] text-muted-foreground">{arch.rarity} · locked</div>
+        </div>
+        <Badge variant="outline" className="ml-auto text-[0.6rem] text-emerald-400 border-emerald-500/30">
+          {arch.bonus.label}
+        </Badge>
       </div>
-      <div className="text-lg font-bold leading-none">{value}</div>
-      <div className={cn("text-xs mt-0.5", ok ? "text-emerald-400" : "text-muted-foreground")}>{sub}</div>
+      <p className="text-xs text-muted-foreground italic leading-snug">{arch.bonus.desc}</p>
+    </div>
+  );
+}
+
+function MiniStat({ icon, label, value, ok, need }: { icon: React.ReactNode; label: string; value: string; ok: boolean; need: string }) {
+  return (
+    <div className="stat-card text-center">
+      <div className="flex items-center justify-center gap-1 text-muted-foreground text-[0.65rem] mb-1 uppercase tracking-wide">
+        {icon}
+        {label}
+      </div>
+      <div className="text-base font-bold tabular-nums leading-none">{value}</div>
+      <div className={cn("text-[0.65rem] mt-0.5", ok ? "text-emerald-400" : "text-muted-foreground")}>
+        / {need}
+      </div>
     </div>
   );
 }
@@ -151,7 +302,7 @@ function ProgressRow({ label, pct, color }: { label: string; pct: number; color:
   return (
     <div className="flex items-center gap-2">
       <span className="text-xs text-muted-foreground w-20 shrink-0">{label}</span>
-      <div className="flex-1 h-2 rounded-full bg-muted/40 overflow-hidden">
+      <div className="flex-1 h-1.5 rounded-full bg-muted/40 overflow-hidden">
         <div
           className={cn("h-full transition-all duration-500", color)}
           style={{ width: `${Math.min(100, pct)}%` }}

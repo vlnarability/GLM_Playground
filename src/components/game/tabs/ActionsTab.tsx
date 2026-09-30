@@ -1,21 +1,16 @@
 "use client";
 
-import { useGameStore } from "@/game/state/store";
+import { useGameStore, isActionCapped } from "@/game/state/store";
 import { actionsForStage } from "@/game/data/actions";
 import { STAGES } from "@/game/data/stages";
-import { STAGE_RESOURCES } from "@/game/data/resources";
-import { formatNumber, resourceColor, resourceIcon, resourceName } from "../shared/format";
+import { formatNumber, resourceColor, resourceIcon } from "../shared/format";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { ChevronRight } from "lucide-react";
+import { cn } from "@/lib/utils";
 
 export function ActionsTab() {
   const stageIndex = useGameStore((s) => s.stageIndex);
-  const resources = useGameStore((s) => s.resources);
-  const performAction = useGameStore((s) => s.performAction);
-
   const stage = STAGES[stageIndex];
   const actions = actionsForStage(stage.id);
-  const stageRes = STAGE_RESOURCES[stage.id] || [];
 
   return (
     <div className="space-y-4">
@@ -34,64 +29,66 @@ export function ActionsTab() {
       <Card className="glass-panel">
         <CardHeader className="pb-2">
           <CardTitle className="text-sm">Manual Actions</CardTitle>
-          <CardDescription>Click to gather resources. The bootstrap of a civilization.</CardDescription>
+          <CardDescription>
+            Click to gather. Actions that would only overflow a capped resource are disabled — no waste.
+          </CardDescription>
         </CardHeader>
         <CardContent>
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2">
-            {actions.map((a) => {
-              const canAfford = !a.cost || Object.entries(a.cost).every(([r, v]) => (resources[r] || 0) >= (v as number));
-              return (
-                <button
-                  key={a.id}
-                  onClick={() => performAction(a.id)}
-                  disabled={!canAfford}
-                  className="action-btn"
-                  title={a.desc}
-                >
-                  <span className="icon">{a.icon}</span>
-                  <span className="label">{a.name}</span>
-                  <span className="cost">
-                    {a.cost && Object.keys(a.cost).length > 0 ? (
-                      Object.entries(a.cost).map(([r, v]) => (
-                        <span key={r} className="mr-1" style={{ color: (resources[r] || 0) >= (v as number) ? resourceColor(r) : "#ef4444" }}>
-                          {resourceIcon(r)}{formatNumber(v as number, 0)}
-                        </span>
-                      ))
-                    ) : (
-                      <span className="text-emerald-400">free</span>
-                    )}
-                  </span>
-                  <span className="cost text-emerald-300">
-                    +{Object.entries(a.produces).map(([r, v]) => `${formatNumber(v as number, 0)}${resourceIcon(r)}`).join(" ")}
-                  </span>
-                </button>
-              );
-            })}
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Stage resources list */}
-      <Card className="glass-panel">
-        <CardHeader className="pb-2">
-          <CardTitle className="text-sm">Stage Resources</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-2">
-            {stageRes.map((r) => (
-              <div key={r} className="stat-card flex items-center gap-2">
-                <span className="text-lg">{resourceIcon(r)}</span>
-                <div className="min-w-0">
-                  <div className="text-xs text-muted-foreground truncate">{resourceName(r)}</div>
-                  <div className="text-sm font-bold" style={{ color: resourceColor(r) }}>
-                    {formatNumber(resources[r] || 0, 0)}
-                  </div>
-                </div>
-              </div>
+            {actions.map((a) => (
+              <ActionCard key={a.id} action={a} />
             ))}
           </div>
         </CardContent>
       </Card>
     </div>
+  );
+}
+
+function ActionCard({ action }: { action: typeof import("@/game/data/actions").ACTIONS[number] }) {
+  const resources = useGameStore((s) => s.resources);
+  const capacities = useGameStore((s) => s.capacities);
+  const performAction = useGameStore((s) => s.performAction);
+
+  const canAfford = !action.cost || Object.entries(action.cost).every(([r, v]) => (resources[r] || 0) >= (v as number));
+  const capped = isActionCapped(action.produces as Record<string, number>, resources, capacities);
+  const disabled = !canAfford || capped;
+
+  return (
+    <button
+      onClick={() => performAction(action.id)}
+      disabled={disabled}
+      className={cn("action-btn", capped && "opacity-40")}
+      title={capped ? "Output resource is at capacity — no waste" : action.desc}
+    >
+      <span className="icon">{action.icon}</span>
+      <span className="label">{action.name}</span>
+      {capped ? (
+        <span className="cost text-amber-500/80">capped</span>
+      ) : (
+        <>
+          <span className="cost">
+            {action.cost && Object.keys(action.cost).length > 0 ? (
+              Object.entries(action.cost).map(([r, v]) => (
+                <span
+                  key={r}
+                  className="mr-1"
+                  style={{ color: (resources[r] || 0) >= (v as number) ? resourceColor(r) : "#ef4444" }}
+                >
+                  {resourceIcon(r)}{formatNumber(v as number)}
+                </span>
+              ))
+            ) : (
+              <span className="text-emerald-400">free</span>
+            )}
+          </span>
+          <span className="cost text-emerald-300">
+            +{Object.entries(action.produces).map(([r, v]) =>
+              `${formatNumber(v as number)}${resourceIcon(r)}`
+            ).join(" ")}
+          </span>
+        </>
+      )}
+    </button>
   );
 }

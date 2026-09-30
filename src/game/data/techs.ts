@@ -25,6 +25,7 @@ export const TECHS: TechDef[] = [
     requires: ["membrane_reinforcement"],
     effects: "+30% glucose production",
     multiplier: { target: "production", value: 0.30 },
+    grantsAffinity: { archetype: "fungoid", amount: 1 },
   },
   {
     id: "organelle_specialization",
@@ -48,6 +49,7 @@ export const TECHS: TechDef[] = [
     tier: 1,
     effects: "+15% glucose, unlocks plantoid affinity",
     multiplier: { target: "production", value: 0.15 },
+    grantsAffinity: { archetype: "plantoid", amount: 3 },
   },
 
   // ===== CREATURE =====
@@ -84,6 +86,7 @@ export const TECHS: TechDef[] = [
     tier: 1,
     effects: "+50% knowledge & culture",
     multiplier: { target: "production", value: 0.50 },
+    grantsAffinity: { archetype: "molluscoid", amount: 2 },
   },
   {
     id: "domestication",
@@ -96,6 +99,7 @@ export const TECHS: TechDef[] = [
     requires: ["pack_instinct"],
     effects: "+20% food, mammalian affinity",
     multiplier: { target: "production", value: 0.20 },
+    grantsAffinity: { archetype: "mammalian", amount: 3 },
   },
 
   // ===== TRIBAL =====
@@ -142,6 +146,7 @@ export const TECHS: TechDef[] = [
     tier: 1,
     effects: "+60% military power",
     multiplier: { target: "production", value: 0.60 },
+    grantsAffinity: { archetype: "reptilian", amount: 2 },
   },
 
   // ===== CIVILIZATION =====
