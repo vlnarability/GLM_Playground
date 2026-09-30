@@ -134,52 +134,53 @@ function AchievementsContent() {
         })}
       </div>
 
-      {/* Achievement grid */}
+      {/* Achievement grid — earned first, then collapsed locked summary */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-        {filtered.map((ach) => {
-          const earned = !!achievements[ach.id] || ach.check(ctx);
-          return (
-            <div
-              key={ach.id}
-              className={cn(
-                "stat-card flex items-start gap-3 transition-all",
-                !earned && "opacity-60"
-              )}
-            >
-              <div
-                className={cn(
-                  "w-10 h-10 rounded flex items-center justify-center text-xl shrink-0",
-                  earned
-                    ? "bg-primary/15 border border-primary/40"
-                    : "bg-muted/40 border border-border grayscale"
-                )}
-              >
-                {earned ? ach.icon : <Lock className="w-4 h-4 text-muted-foreground" />}
+        {/* Earned achievements — full cards */}
+        {filtered.filter((ach) => achievements[ach.id] || ach.check(ctx)).map((ach) => (
+          <div key={ach.id} className="stat-card flex items-start gap-3 transition-all">
+            <div className="w-10 h-10 rounded flex items-center justify-center text-xl shrink-0 bg-primary/15 border border-primary/40">
+              {ach.icon}
+            </div>
+            <div className="min-w-0 flex-1">
+              <div className="flex items-center gap-1.5">
+                <h3 className="text-sm font-semibold leading-tight">{ach.name}</h3>
+                <CheckCircle2 className="w-3 h-3 text-emerald-400 shrink-0" />
               </div>
-              <div className="min-w-0 flex-1">
-                <div className="flex items-center gap-1.5">
-                  <h3 className={cn("text-sm font-semibold leading-tight", !earned && "text-muted-foreground")}>
-                    {earned ? ach.name : "???"}
-                  </h3>
-                  {earned && <CheckCircle2 className="w-3 h-3 text-emerald-400 shrink-0" />}
-                </div>
-                <p className="text-xs text-muted-foreground leading-snug mt-0.5">{ach.desc}</p>
-                <div className="flex items-center gap-1.5 mt-1.5">
-                  <Badge
-                    variant="outline"
-                    className={cn(
-                      "text-[0.6rem]",
-                      earned ? "text-emerald-400 border-emerald-500/30" : "text-muted-foreground"
-                    )}
-                  >
-                    +{(ach.bonus.value * 100).toFixed(1)}% {ach.bonus.type}
-                  </Badge>
-                  <Badge variant="secondary" className="text-[0.6rem]">{ach.category}</Badge>
-                </div>
+              <p className="text-xs text-muted-foreground leading-snug mt-0.5">{ach.desc}</p>
+              <div className="flex items-center gap-1.5 mt-1.5">
+                <Badge variant="outline" className="text-[0.6rem] text-emerald-400 border-emerald-500/30">
+                  +{(ach.bonus.value * 100).toFixed(1)}% {ach.bonus.type}
+                </Badge>
+                <Badge variant="secondary" className="text-[0.6rem]">{ach.category}</Badge>
               </div>
             </div>
+          </div>
+        ))}
+
+        {/* Locked achievements — collapsed summary */}
+        {(() => {
+          const locked = filtered.filter((ach) => !(achievements[ach.id] || ach.check(ctx)));
+          if (locked.length === 0) return null;
+          return (
+            <div className="stat-card flex items-center gap-3 col-span-full border-dashed opacity-70">
+              <div className="w-10 h-10 rounded flex items-center justify-center shrink-0 bg-muted/40 border border-border">
+                <Lock className="w-4 h-4 text-muted-foreground" />
+              </div>
+              <div className="min-w-0 flex-1">
+                <div className="text-sm font-semibold text-muted-foreground">
+                  {locked.length} locked {locked.length === 1 ? "achievement" : "achievements"}
+                </div>
+                <div className="text-xs text-muted-foreground mt-0.5">
+                  Keep playing to discover hidden goals — each grants a permanent bonus.
+                </div>
+              </div>
+              <Badge variant="outline" className="text-[0.6rem] text-muted-foreground">
+                {locked.reduce((sum, a) => sum + a.bonus.value * 100, 0).toFixed(1)}% available
+              </Badge>
+            </div>
           );
-        })}
+        })()}
       </div>
     </div>
   );

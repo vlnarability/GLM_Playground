@@ -495,3 +495,72 @@ Game is stable and playable. Previous rounds added achievements, offline progres
 4. **More achievements** — Expand to 50+ (design doc targets 200-300). Add event-specific achievements ("Survived 10 events", "Chose diplomacy 5 times").
 5. **Balance tuning** — Verify event effects are meaningful but not game-breaking at each stage.
 6. **PWA production test** — Build for production and verify the service worker caches correctly for offline play.
+
+---
+Task ID: 6
+Agent: webDevReview cron (round 5)
+Task: QA testing, add event history log, expand events (crisis/alignment), event achievements, collapse locked achievements
+
+## Current Project Status Assessment
+Game is stable and playable. Previous rounds added PWA support, random events (12 events), tutorial/toast overlap fixes, and mobile nav improvements. This round focused on adding an event history log, expanding the event variety with crisis and alignment-tilting events, adding event-specific achievements, and improving the Awards tab visual design by collapsing locked achievements.
+
+## Work Completed This Round
+
+### New Features
+1. **Event history log** (`EventHistoryEntry` type + Archive tab section):
+   - Every resolved event is recorded with: event name, icon, choice label, timestamp, game time
+   - New "Event Chronicle" section in the Archive tab shows all event choices this run (last 50)
+   - Each entry shows the event icon, name, chosen option (→ label), and game time
+   - Empty state: "No events encountered yet — events fire randomly during play"
+   - Reset on prestige (run-scoped history)
+
+2. **6 new events** (12 → 18 total):
+   - **Crisis events**: "Drought" (conserve vs redistribute), "Visionary Dream" (embrace vs dismiss), "Migration Wave" (welcome vs turn back)
+   - **Alignment-tilting events**: "The Old Warrior" (offensive→reptilian vs defensive→mammalian), "The Great Debate" (empiricism→avian vs rationalism→molluscoid)
+   - Each event has narrative descriptions and archetype affinity effects
+   - Crisis events have lower weight (3-4) vs regular events (5-10)
+
+3. **3 event-specific achievements** (34 → 37 total):
+   - "Tested by Chance" — resolve your first event (+0.5% production)
+   - "Weathered" — resolve 10 events across all runs (+1% production)
+   - "Storm-Tossed" — resolve 50 events across all runs (+2% production)
+   - Added `totalEventsResolved` meta state tracking (persists across runs)
+   - Achievement check fires immediately after event resolution
+
+### Styling Improvements
+4. **Awards tab redesign** (VLM feedback):
+   - Earned achievements now show first as full cards with icon, name, description, and bonus badges
+   - Locked achievements collapsed into a single dashed summary line: "N locked achievements — Keep playing to discover hidden goals"
+   - Shows total available bonus percentage in the summary badge
+   - Eliminates the "wall of grey ???" that created visual noise
+   - Much cleaner, focuses attention on earned achievements
+
+### Code Quality
+- 0 lint errors in project code
+- `eventHistory` added to GameState with migration
+- `totalEventsResolved` persists across prestige (meta state)
+- Event resolution triggers immediate achievement check
+- All new state fields have migration defaults
+
+## Verification Results
+- Dev server compiles cleanly, 0 errors
+- Event "Shadow in the Deep" fired, resolved with "Flee aggressively"
+- Event Chronicle in Archive tab shows: "🌑 Shadow in the Deep → Flee aggressively 3m 46s"
+- "Tested by Chance" achievement unlocked after first event resolution
+- Awards tab shows earned achievements first, then collapsed "N locked" summary
+- Second event fired and resolved correctly (event cooldown working)
+- 0 lint errors in project code
+
+## Unresolved Issues / Risks
+1. **Later stages playtest**: Tribal → Galactic still not playtested end-to-end. Events fire but balance is unverified for later stages.
+2. **Event balance**: 18 events now, but effects haven't been playtested for balance across all stages.
+3. **PWA production test**: Service worker only registers in production. Offline mode untested.
+4. **Event variety**: 18 events is good but design doc implies more (crisis survival, alignment tracking). Could add more.
+
+## Priority Recommendations for Next Phase
+1. **Playtest Tribal → Galactic** — Verify events, systems, and tech all work in later stages.
+2. **Add more events** — Expand to 25+ events. Add stage-transition events, crisis survival events.
+3. **Event balance pass** — Tune event effects to be meaningful but not game-breaking at each stage.
+4. **More achievements** — Expand to 50+ (design doc targets 200-300). Add stage-specific and archetype-specific achievements.
+5. **PWA production build test** — Verify service worker caches correctly for offline play.
+6. **Sound/audio** — Design doc §13.6 mentions audio may be added later. Could add subtle event sounds.

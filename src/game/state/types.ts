@@ -121,6 +121,16 @@ export interface ArchiveEntry {
   favorite?: boolean;
 }
 
+export interface EventHistoryEntry {
+  eventId: string;
+  eventName: string;
+  eventIcon: string;
+  choiceId: string;
+  choiceLabel: string;
+  timestamp: number;
+  gameTime: number;
+}
+
 export interface GameState {
   // Run state
   stageIndex: number;
@@ -143,6 +153,7 @@ export interface GameState {
   galacticWins: number;
   stageClearCounts: Record<StageId, number>;
   fastestCellClear: number; // seconds, best time clearing Cell stage
+  totalEventsResolved: number; // across all runs
   upgrades: Record<string, number>;
   storyUnlocked: Record<string, boolean>;
   storyAcknowledged: Record<string, boolean>;
@@ -162,6 +173,7 @@ export interface GameState {
   activeStoryPopup: string | null;
   activeEvent: string | null; // ID of the currently-offered random event
   eventCooldown: number; // seconds until next event can fire
+  eventHistory: EventHistoryEntry[]; // log of past event choices this run
   hasSeenIntro: boolean;
   lastSaved: number;
 

@@ -46,6 +46,7 @@ function initialMetaState(): Partial<GameState> {
     galacticWins: 0,
     stageClearCounts: Object.fromEntries(STAGE_IDS.map((s) => [s, 0])) as Record<StageId, number>,
     fastestCellClear: 0,
+    totalEventsResolved: 0,
     upgrades: Object.fromEntries(UPGRADES.map((u) => [u.id, 0])),
     storyUnlocked: { first_spark: true },
     storyAcknowledged: {},
@@ -63,6 +64,7 @@ function initialMetaState(): Partial<GameState> {
     activeStoryPopup: "first_spark",
     activeEvent: null,
     eventCooldown: 60, // first event can fire after 60s
+    eventHistory: [],
     hasSeenIntro: false,
     lastSaved: Date.now(),
     tutorialStep: 0,
@@ -557,6 +559,7 @@ export const useGameStore = create<GameStore>()(
           unlockedLayers: s.unlockedLayers,
           stageClearCounts: s.stageClearCounts,
           fastestCellClear: s.fastestCellClear,
+          totalEventsResolved: s.totalEventsResolved,
           achievements: s.achievements,
           newAchievements: s.newAchievements,
         };
@@ -627,14 +630,39 @@ export const useGameStore = create<GameStore>()(
             archetypeAffinity[ac.archetype] = (archetypeAffinity[ac.archetype] || 0) + ac.amount;
           }
         }
+        // Record in event history
+        const eventHistory = [
+          {
+            eventId: ev.id,
+            eventName: ev.name,
+            eventIcon: ev.icon,
+            choiceId: choice.id,
+            choiceLabel: choice.label,
+            timestamp: Date.now(),
+            gameTime: s.time,
+          },
+          ...(s.eventHistory || []),
+        ].slice(0, 50); // keep last 50
         set({
           resources: res,
           population: pop,
           maxPopulation: Math.max(s.maxPopulation || 0, pop),
           archetypeAffinity,
           activeEvent: null,
+          eventHistory,
+          totalEventsResolved: (s.totalEventsResolved || 0) + 1,
         });
         if (choice.logMsg) get().addToLog(`${ev.name}: ${choice.logMsg}`);
+
+        // Check achievements after event resolution
+        const postEventState = get();
+        const achResult = checkAchievements(postEventState);
+        if (achResult.newOnes.length > 0) {
+          set({
+            achievements: achResult.earned,
+            newAchievements: [...(postEventState.newAchievements || []), ...achResult.newOnes],
+          });
+        }
       },
 
       dismissStory: (id) => {
@@ -765,6 +793,8 @@ export const useGameStore = create<GameStore>()(
         if (persisted.fastestCellClear === undefined) persisted.fastestCellClear = 0;
         if (persisted.activeEvent === undefined) persisted.activeEvent = null;
         if (persisted.eventCooldown === undefined) persisted.eventCooldown = 60;
+        if (!persisted.eventHistory) persisted.eventHistory = [];
+        if (persisted.totalEventsResolved === undefined) persisted.totalEventsResolved = 0;
         return persisted;
       },
     }
@@ -805,6 +835,7 @@ function buildAchievementCtx(s: GameState): AchievementCheckCtx {
     upgradesOwnedCount,
     maxPopulation: s.maxPopulation || 0,
     fastestCellClear: s.fastestCellClear || 0,
+    totalEventsResolved: s.totalEventsResolved || 0,
   };
 }
 

@@ -35,6 +35,8 @@ export interface AchievementCheckCtx {
   maxScore?: number;
   totalResources?: number;
   fastestCellClear?: number; // seconds
+  eventsResolved?: number; // events resolved this run (meta)
+  totalEventsResolved?: number; // across all runs
 }
 
 export const ACHIEVEMENTS: AchievementDef[] = [
@@ -331,6 +333,35 @@ export const ACHIEVEMENTS: AchievementDef[] = [
       const rares = ["lithoid", "necroid", "toxoid", "extremophile"];
       return (c.archivedArchetypes || []).some((id) => rares.includes(id));
     },
+    bonus: { type: "production", value: 0.02 },
+  },
+
+  // ===== EVENT ACHIEVEMENTS =====
+  {
+    id: "first_event",
+    name: "Tested by Chance",
+    desc: "Resolve your first random event.",
+    category: "layer",
+    icon: "🎲",
+    check: (c) => (c.totalEventsResolved || 0) >= 1,
+    bonus: { type: "production", value: 0.005 },
+  },
+  {
+    id: "ten_events",
+    name: "Weathered",
+    desc: "Resolve 10 random events across all runs.",
+    category: "layer",
+    icon: "🌦️",
+    check: (c) => (c.totalEventsResolved || 0) >= 10,
+    bonus: { type: "production", value: 0.01 },
+  },
+  {
+    id: "fifty_events",
+    name: "Storm-Tossed",
+    desc: "Resolve 50 random events across all runs.",
+    category: "layer",
+    icon: "⛈️",
+    check: (c) => (c.totalEventsResolved || 0) >= 50,
     bonus: { type: "production", value: 0.02 },
   },
 ];
