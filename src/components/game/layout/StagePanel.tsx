@@ -246,7 +246,7 @@ export function StagePanel() {
       </div>
 
       <Button
-        className="w-full"
+        className={cn("w-full transition-all", canEvolve && "evolve-ready")}
         size="lg"
         disabled={!canEvolve}
         onClick={() => setShowEvolve(true)}
@@ -257,6 +257,11 @@ export function StagePanel() {
       {!canEvolve && (
         <p className="text-xs text-muted-foreground mt-1 text-center">
           Complete all four requirements to evolve
+        </p>
+      )}
+      {canEvolve && (
+        <p className="text-xs text-emerald-400 mt-1 text-center font-semibold animate-pulse">
+          ✓ Ready to evolve
         </p>
       )}
     </div>
@@ -299,16 +304,17 @@ function MiniStat({ icon, label, value, ok, need }: { icon: React.ReactNode; lab
 }
 
 function ProgressRow({ label, pct, color }: { label: string; pct: number; color: string }) {
+  const nearComplete = pct >= 90 && pct < 100;
   return (
     <div className="flex items-center gap-2">
       <span className="text-xs text-muted-foreground w-20 shrink-0">{label}</span>
       <div className="flex-1 h-1.5 rounded-full bg-muted/40 overflow-hidden">
         <div
-          className={cn("h-full transition-all duration-500", color)}
+          className={cn("h-full transition-all duration-500", color, nearComplete && "bar-near-complete")}
           style={{ width: `${Math.min(100, pct)}%` }}
         />
       </div>
-      <span className="text-xs text-muted-foreground w-10 text-right tabular-nums">
+      <span className={cn("text-xs w-10 text-right tabular-nums", pct >= 100 ? "text-emerald-400 font-bold" : "text-muted-foreground")}>
         {Math.floor(pct)}%
       </span>
     </div>

@@ -4,8 +4,9 @@ import { useGameStore } from "@/game/state/store";
 import { STAGES } from "@/game/data/stages";
 import { formatNumber, formatTime } from "../shared/format";
 import { Button } from "@/components/ui/button";
-import { Pause, Play, FastForward, Save, Settings, Store, Clock } from "lucide-react";
+import { Pause, Play, FastForward, Save, Settings, Store, Clock, Check } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useState, useRef, useEffect } from "react";
 
 export function Header() {
   const stageIndex = useGameStore((s) => s.stageIndex);
@@ -16,6 +17,7 @@ export function Header() {
   const evolutionPoints = useGameStore((s) => s.evolutionPoints);
   const galacticWins = useGameStore((s) => s.galacticWins);
   const totalRuns = useGameStore((s) => s.totalRuns);
+  const lastSaved = useGameStore((s) => s.lastSaved);
 
   const setSpeed = useGameStore((s) => s.setSpeed);
   const togglePause = useGameStore((s) => s.togglePause);
@@ -27,6 +29,21 @@ export function Header() {
   const speeds = [1, 2, 4, 8];
   const speedIdx = speeds.indexOf(speed);
   const nextSpeed = speeds[(speedIdx + 1) % speeds.length];
+
+  // Save flash indicator
+  const [saveFlash, setSaveFlash] = useState(false);
+  const prevLastSaved = useRef(lastSaved);
+  useEffect(() => {
+    if (lastSaved !== prevLastSaved.current) {
+      prevLastSaved.current = lastSaved;
+      const timer1 = setTimeout(() => setSaveFlash(true), 0);
+      const timer2 = setTimeout(() => setSaveFlash(false), 600);
+      return () => {
+        clearTimeout(timer1);
+        clearTimeout(timer2);
+      };
+    }
+  }, [lastSaved]);
 
   return (
     <header
@@ -118,11 +135,15 @@ export function Header() {
           <Button
             variant="ghost"
             size="icon"
-            className="h-8 w-8"
+            className="h-8 w-8 relative"
             onClick={() => saveGame()}
             title="Save game"
           >
-            <Save className="w-4 h-4" />
+            {saveFlash ? (
+              <Check className="w-4 h-4 text-emerald-400 save-indicator" />
+            ) : (
+              <Save className="w-4 h-4" />
+            )}
           </Button>
           <Button
             variant="ghost"

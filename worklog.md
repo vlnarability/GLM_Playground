@@ -698,3 +698,63 @@ Game is stable and playable. Previous rounds added keyboard shortcuts, lifetime 
 4. **Balance tuning** — Verify Cell stage takes 5-60 min as designed (§2.3).
 5. **PWA production build test** — Verify service worker caches correctly for offline play.
 6. **Sound effects** — Design doc §13.6 mentions audio may be added later. Could add subtle event/purchase sounds.
+
+---
+Task ID: 9
+Agent: webDevReview cron (round 8)
+Task: QA testing, micro-animations, evolve button prominence, save indicator, progress bar polish
+
+## Current Project Status Assessment
+Game is stable and playable. Previous rounds added event frequency setting, floating action feedback, keyboard shortcuts, and lifetime statistics. This round focused on VLM feedback: making the Evolve button more prominent, adding micro-animations, and an auto-save indicator.
+
+## Work Completed This Round
+
+### Styling Improvements (VLM Feedback)
+1. **Evolve button pulsing glow** (VLM: "Evolve button not prominent enough"):
+   - Added `evolve-ready` CSS class with `evolve-pulse` animation
+   - Button pulses (scale 1→1.02, box-shadow glow) every 1.5s when requirements are met
+   - Added "✓ Ready to evolve" text below button in emerald with `animate-pulse`
+   - The button now visually demands attention when the player can advance
+
+2. **Progress bar near-complete pulse**:
+   - Added `bar-near-complete` class — bars pulse opacity (1→0.7) when between 90-99%
+   - 100% complete bars now show percentage in emerald green bold
+   - Creates visual anticipation as requirements approach completion
+
+3. **Button press ripple**:
+   - `.action-btn:active:not(:disabled)` now scales to 0.96 with inset shadow
+   - More tactile feedback when clicking manual actions
+
+4. **Auto-save indicator**:
+   - Save button icon changes to green Check mark for 0.6s when a save occurs
+   - Tracks `lastSaved` state changes via useEffect
+   - Uses `save-flash` animation (scale 0.8→1.1→1, fade)
+   - Visual confirmation that auto-saves (every 30s) are happening
+
+### Code Quality
+- 0 lint errors in project code (fixed a setState-in-effect lint error by deferring with setTimeout)
+- All animations are CSS-based (no JS animation overhead)
+- Save indicator uses proper effect cleanup (clearTimeout)
+- Progress bar pulse conditionally applied (90-99% only, not at 100%)
+
+## Verification Results
+- Dev server compiles cleanly, no errors
+- Page loads with 5 resource chips, no console errors
+- Evolve button correctly shows `evolve-ready` class only when canEvolve is true (verified disabled state when requirements not met)
+- 2 progress bars at 100% show in emerald green bold (Population and Score)
+- Near-complete pulse activates at 90-99% (verified condition logic)
+- 0 lint errors in project code
+
+## Unresolved Issues / Risks
+1. **Later stages playtest**: Tribal → Galactic still not playtested end-to-end. Balance is unverified.
+2. **PWA production test**: Service worker only registers in production. Offline mode untested.
+3. **Animation performance**: Multiple pulsing elements could cause CPU load on low-end devices. Should test on mobile.
+4. **Evolve pulse visibility**: The pulse is subtle (scale 1.02). Could be more dramatic for better attention-grabbing.
+
+## Priority Recommendations for Next Phase
+1. **Playtest Tribal → Galactic** — Verify all stage transitions, events, and systems work end-to-end.
+2. **More stage-specific content** — Add story triggers and events for each stage's mid-point and exit.
+3. **Balance tuning** — Verify Cell stage takes 5-60 min as designed (§2.3).
+4. **PWA production build test** — Verify service worker caches correctly for offline play.
+5. **Sound effects** — Design doc §13.6 mentions audio may be added later. Could add subtle event/purchase sounds.
+6. **Mobile performance audit** — Test animations on low-end mobile devices.
