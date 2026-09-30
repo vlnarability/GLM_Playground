@@ -4,9 +4,8 @@ import { useGameStore } from "@/game/state/store";
 import { STAGES } from "@/game/data/stages";
 import { formatNumber, formatTime } from "../shared/format";
 import { Button } from "@/components/ui/button";
-import { Pause, Play, FastForward, Save, RotateCcw, Settings, Store, Clock } from "lucide-react";
+import { Pause, Play, FastForward, Save, Settings, Store, Clock } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { useState } from "react";
 
 export function Header() {
   const stageIndex = useGameStore((s) => s.stageIndex);
@@ -22,11 +21,9 @@ export function Header() {
   const togglePause = useGameStore((s) => s.togglePause);
   const saveGame = useGameStore((s) => s.saveGame);
   const setShowShop = useGameStore((s) => s.setShowShop);
-  const hardReset = useGameStore((s) => s.hardReset);
+  const setShowSettings = useGameStore((s) => s.setShowSettings);
 
   const stage = STAGES[stageIndex];
-  const [showConfirm, setShowConfirm] = useState(false);
-
   const speeds = [1, 2, 4, 8];
   const speedIdx = speeds.indexOf(speed);
   const nextSpeed = speeds[(speedIdx + 1) % speeds.length];
@@ -131,10 +128,10 @@ export function Header() {
             variant="ghost"
             size="icon"
             className="h-8 w-8"
-            onClick={() => setShowConfirm(true)}
-            title="Hard reset"
+            onClick={() => setShowSettings(true)}
+            title="Settings, save export/import, reset"
           >
-            <RotateCcw className="w-4 h-4" />
+            <Settings className="w-4 h-4" />
           </Button>
         </div>
       </div>
@@ -169,35 +166,6 @@ export function Header() {
           Shop
         </Button>
       </div>
-
-      {/* Hard reset confirm */}
-      {showConfirm && (
-        <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4">
-          <div className="glass-strong rounded-xl p-5 max-w-sm w-full">
-            <h3 className="text-lg font-bold mb-2 flex items-center gap-2">
-              <Settings className="w-5 h-5" /> Hard Reset
-            </h3>
-            <p className="text-sm text-muted-foreground mb-4">
-              This will erase ALL progress — every run, every upgrade, every story beat.
-              You will start completely fresh. This cannot be undone.
-            </p>
-            <div className="flex gap-2 justify-end">
-              <Button variant="ghost" onClick={() => setShowConfirm(false)}>
-                Cancel
-              </Button>
-              <Button
-                variant="destructive"
-                onClick={() => {
-                  hardReset();
-                  setShowConfirm(false);
-                }}
-              >
-                Erase Everything
-              </Button>
-            </div>
-          </div>
-        </div>
-      )}
     </header>
   );
 }

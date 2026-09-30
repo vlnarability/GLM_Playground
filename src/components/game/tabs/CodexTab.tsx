@@ -75,34 +75,41 @@ export function CodexTab() {
       {/* Systems discovered */}
       <Card className="glass-panel">
         <CardHeader className="pb-2">
-          <CardTitle className="text-sm">Systems Catalogue</CardTitle>
-          <CardDescription>All systems discovered across stages.</CardDescription>
+          <CardTitle className="text-sm flex items-center justify-between">
+            <span>Systems Catalogue</span>
+            <Badge variant="outline" className="text-xs">
+              {SYSTEMS.filter((s) => (ownedSystems[s.id] || 0) > 0).length}/{SYSTEMS.length}
+            </Badge>
+          </CardTitle>
+          <CardDescription>Discovered systems across all stages.</CardDescription>
         </CardHeader>
         <CardContent>
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2">
-            {SYSTEMS.map((sys) => {
-              const discovered = (ownedSystems[sys.id] || 0) > 0;
-              return (
-                <div
-                  key={sys.id}
-                  className={`stat-card flex items-center gap-2 ${!discovered ? "opacity-50" : ""}`}
-                >
-                  {discovered ? (
-                    <span className="text-lg">{sys.icon}</span>
-                  ) : (
-                    <Lock className="w-4 h-4 text-muted-foreground" />
-                  )}
-                  <div className="min-w-0">
-                    <div className={`text-xs font-medium truncate ${!discovered ? "text-muted-foreground" : ""}`}>
-                      {discovered ? sys.name : "???"}
-                    </div>
-                    <div className="text-[0.65rem] text-muted-foreground">
-                      {STAGES.find((s) => s.id === sys.stage)?.name}
-                    </div>
+            {/* Discovered first */}
+            {SYSTEMS.filter((sys) => (ownedSystems[sys.id] || 0) > 0).map((sys) => (
+              <div key={sys.id} className="stat-card flex items-center gap-2">
+                <span className="text-lg">{sys.icon}</span>
+                <div className="min-w-0">
+                  <div className="text-xs font-medium truncate">{sys.name}</div>
+                  <div className="text-[0.65rem] text-muted-foreground">
+                    {STAGES.find((s) => s.id === sys.stage)?.name}
                   </div>
                 </div>
+              </div>
+            ))}
+            {/* Compact undiscovered summary */}
+            {(() => {
+              const undiscovered = SYSTEMS.filter((sys) => (ownedSystems[sys.id] || 0) === 0);
+              if (undiscovered.length === 0) return null;
+              return (
+                <div className="stat-card flex items-center gap-2 col-span-full border-dashed opacity-60">
+                  <Lock className="w-4 h-4 text-muted-foreground" />
+                  <span className="text-xs text-muted-foreground">
+                    {undiscovered.length} undiscovered — keep building to find them
+                  </span>
+                </div>
               );
-            })}
+            })()}
           </div>
         </CardContent>
       </Card>
@@ -110,34 +117,41 @@ export function CodexTab() {
       {/* Tech discovered */}
       <Card className="glass-panel">
         <CardHeader className="pb-2">
-          <CardTitle className="text-sm">Tech Tree Index</CardTitle>
-          <CardDescription>All researched technologies.</CardDescription>
+          <CardTitle className="text-sm flex items-center justify-between">
+            <span>Tech Tree Index</span>
+            <Badge variant="outline" className="text-xs">
+              {TECHS.filter((t) => technologies[t.id]).length}/{TECHS.length}
+            </Badge>
+          </CardTitle>
+          <CardDescription>Researched technologies.</CardDescription>
         </CardHeader>
         <CardContent>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-            {TECHS.map((tech) => {
-              const discovered = !!technologies[tech.id];
-              return (
-                <div
-                  key={tech.id}
-                  className={`stat-card flex items-center gap-2 ${!discovered ? "opacity-50" : ""}`}
-                >
-                  {discovered ? (
-                    <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
-                  ) : (
-                    <Lock className="w-4 h-4 text-muted-foreground shrink-0" />
-                  )}
-                  <div className="min-w-0 flex-1">
-                    <div className={`text-xs font-medium truncate ${!discovered ? "text-muted-foreground" : ""}`}>
-                      {discovered ? tech.name : "???"}
-                    </div>
-                    <div className="text-[0.65rem] text-muted-foreground">
-                      {STAGES.find((s) => s.id === tech.stage)?.name} · {tech.branch}
-                    </div>
+            {/* Researched first */}
+            {TECHS.filter((tech) => technologies[tech.id]).map((tech) => (
+              <div key={tech.id} className="stat-card flex items-center gap-2">
+                <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
+                <div className="min-w-0">
+                  <div className="text-xs font-medium truncate">{tech.name}</div>
+                  <div className="text-[0.65rem] text-muted-foreground">
+                    {STAGES.find((s) => s.id === tech.stage)?.name} · {tech.branch}
                   </div>
                 </div>
+              </div>
+            ))}
+            {/* Compact undiscovered summary */}
+            {(() => {
+              const undiscovered = TECHS.filter((tech) => !technologies[tech.id]);
+              if (undiscovered.length === 0) return null;
+              return (
+                <div className="stat-card flex items-center gap-2 col-span-full border-dashed opacity-60">
+                  <Lock className="w-4 h-4 text-muted-foreground" />
+                  <span className="text-xs text-muted-foreground">
+                    {undiscovered.length} unresearched — research tech to unlock bonuses
+                  </span>
+                </div>
               );
-            })}
+            })()}
           </div>
         </CardContent>
       </Card>

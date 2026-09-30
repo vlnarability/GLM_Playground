@@ -127,6 +127,7 @@ export interface GameState {
   time: number;
   population: number;
   populationProgress: number; // 0-1 toward next population point
+  maxPopulation: number; // peak population this run (for achievements)
   resources: Record<string, number>;
   capacities: Record<string, number>;
   ownedSystems: Record<string, number>;
@@ -141,6 +142,7 @@ export interface GameState {
   totalRuns: number;
   galacticWins: number;
   stageClearCounts: Record<StageId, number>;
+  fastestCellClear: number; // seconds, best time clearing Cell stage
   upgrades: Record<string, number>;
   storyUnlocked: Record<string, boolean>;
   storyAcknowledged: Record<string, boolean>;
@@ -156,6 +158,7 @@ export interface GameState {
   paused: boolean;
   showShop: boolean;
   showEvolve: boolean;
+  showSettings: boolean;
   activeStoryPopup: string | null;
   hasSeenIntro: boolean;
   lastSaved: number;
@@ -163,6 +166,7 @@ export interface GameState {
   // Tutorial
   tutorialStep: number;
   tutorialActive: boolean;
+  tutorialDismissed: boolean;
 }
 
 export interface GameStore extends GameState {
@@ -181,6 +185,8 @@ export interface GameStore extends GameState {
   togglePause: () => void;
   setShowShop: (v: boolean) => void;
   setShowEvolve: (v: boolean) => void;
+  setShowSettings: (v: boolean) => void;
+  dismissTutorial: () => void;
   dismissStory: (id: string) => void;
   dismissAchievementToast: () => void;
   applyOfflineProgress: () => { elapsed: number; resourcesGained: Record<string, number>; applied: boolean } | null;

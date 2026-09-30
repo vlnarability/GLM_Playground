@@ -144,6 +144,46 @@ export const STORY_ENTRIES: StoryEntry[] = [
     trigger: "First prestige",
     category: "layer",
   },
+  {
+    id: "first_autobuyer",
+    title: "The First Self",
+    body: "A membrane pump hums to life in the dark of the sea. For the first time, the cell does not need to act — " +
+      "something else is doing the work of staying alive. The first fragile thread of automation is woven.",
+    stage: "cell",
+    layer: "Evolution",
+    trigger: "Build a Membrane Pump",
+    category: "stage",
+  },
+  {
+    id: "first_tech",
+    title: "The First Knowing",
+    body: "Knowledge crystallizes. Not the slow accumulation of instinct, but a deliberate insight — a thing understood, " +
+      "held, and passed on. The cell has learned to learn.",
+    stage: "cell",
+    layer: "Evolution",
+    trigger: "Research your first technology",
+    category: "milestone",
+  },
+  {
+    id: "population_boom",
+    title: "A Quiet Multiplication",
+    body: "The numbers swell. What was one is now many, and the many begin to need more than the sea freely gives. " +
+      "Scarcity is born — and with it, the first dim shape of choice.",
+    stage: "cell",
+    layer: "Evolution",
+    trigger: "Reach 50 population",
+    category: "milestone",
+  },
+  {
+    id: "first_cap",
+    title: "The Full Vessel",
+    body: "For the first time, there is enough. More than enough. The vessel is full and the surplus spills away into " +
+      "the dark. The cell begins to sense the shape of a thing it does not yet have a word for: waste.",
+    stage: "cell",
+    layer: "Evolution",
+    trigger: "Fill a resource to capacity",
+    category: "milestone",
+  },
 ];
 
 export const STORY_MAP: Record<string, StoryEntry> = Object.fromEntries(
@@ -161,6 +201,10 @@ export const STORY_TRIGGERS: StoryTrigger[] = [
   { id: "nucleus_forms", condition: (s) => !!s.ownedSystems?.["nucleus"] },
   { id: "instinct_learns", condition: (s) => stageSystemsCount(s, "creature") >= 5 },
   { id: "first_circle", condition: (s) => !!s.ownedSystems?.["totem"] },
+  { id: "first_autobuyer", condition: (s) => !!s.ownedSystems?.["membrane_pump"] },
+  { id: "first_tech", condition: (s) => Object.keys(s.technologies || {}).some((k) => s.technologies[k]) },
+  { id: "population_boom", condition: (s) => (s.population || 0) >= 50 },
+  { id: "first_cap", condition: (s) => hasResourceAtCap(s) },
 ];
 
 function totalSystems(s: any): number {
@@ -171,4 +215,13 @@ function stageSystemsCount(s: any, stage: StageId): number {
   return SYSTEMS
     .filter((x) => x.stage === stage)
     .reduce((sum, def) => sum + (s.ownedSystems?.[def.id] || 0), 0);
+}
+
+function hasResourceAtCap(s: any): boolean {
+  if (!s.resources || !s.capacities) return false;
+  for (const r of Object.keys(s.resources)) {
+    const cap = s.capacities[r];
+    if (cap && cap > 0 && (s.resources[r] || 0) >= cap - 0.5) return true;
+  }
+  return false;
 }

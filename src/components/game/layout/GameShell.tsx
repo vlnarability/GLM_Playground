@@ -21,6 +21,8 @@ import { EvolveModal } from "../modals/EvolveModal";
 import { StoryPopup } from "../modals/StoryPopup";
 import { AchievementToast } from "../modals/AchievementToast";
 import { OfflineSummary } from "../modals/OfflineSummary";
+import { SettingsModal } from "../modals/SettingsModal";
+import { TutorialHints } from "./TutorialHints";
 
 export function GameShell() {
   const { offlineSummary, dismissOffline } = useGameLoop();
@@ -69,6 +71,8 @@ export function GameShell() {
       <EvolveModal />
       <StoryPopup />
       <AchievementToast />
+      <SettingsModal />
+      <TutorialHints />
       {offlineSummary && (
         <OfflineSummary
           elapsed={offlineSummary.elapsed}

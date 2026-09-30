@@ -26,6 +26,7 @@ function initialRunState(): Partial<GameState> {
     time: 0,
     population: 8,
     populationProgress: 0,
+    maxPopulation: 8,
     resources,
     capacities,
     ownedSystems: {},
@@ -43,6 +44,7 @@ function initialMetaState(): Partial<GameState> {
     totalRuns: 0,
     galacticWins: 0,
     stageClearCounts: Object.fromEntries(STAGE_IDS.map((s) => [s, 0])) as Record<StageId, number>,
+    fastestCellClear: 0,
     upgrades: Object.fromEntries(UPGRADES.map((u) => [u.id, 0])),
     storyUnlocked: { first_spark: true },
     storyAcknowledged: {},
@@ -56,11 +58,13 @@ function initialMetaState(): Partial<GameState> {
     paused: false,
     showShop: false,
     showEvolve: false,
+    showSettings: false,
     activeStoryPopup: "first_spark",
     hasSeenIntro: false,
     lastSaved: Date.now(),
     tutorialStep: 0,
     tutorialActive: true,
+    tutorialDismissed: false,
   };
 }
 
@@ -175,6 +179,8 @@ export const useGameStore = create<GameStore>()(
           population += 1;
         }
 
+        const maxPopulation = Math.max(s.maxPopulation || 0, population);
+
         const newTime = s.time + realDt;
 
         // Check story triggers
@@ -210,6 +216,7 @@ export const useGameStore = create<GameStore>()(
           capacities,
           time: newTime,
           population,
+          maxPopulation,
           populationProgress,
           storyUnlocked: newStory,
           activeStoryPopup: activePopup,
@@ -452,8 +459,17 @@ export const useGameStore = create<GameStore>()(
 
         const stageClearCounts = { ...s.stageClearCounts, [stage.id]: (s.stageClearCounts[stage.id] || 0) + 1 };
 
+        // Track fastest Cell clear
+        let fastestCellClear = s.fastestCellClear || 0;
+        if (stage.id === "cell") {
+          const clearTime = s.time;
+          if (fastestCellClear === 0 || clearTime < fastestCellClear) {
+            fastestCellClear = clearTime;
+          }
+        }
+
         // Check achievements after stage clear
-        const postEvolveState = { ...s, stageClearCounts, lockedArchetype } as GameState;
+        const postEvolveState = { ...s, stageClearCounts, lockedArchetype, fastestCellClear } as GameState;
         const achResult = checkAchievements(postEvolveState);
         const newAchievements = achResult.newOnes.length > 0
           ? [...(s.newAchievements || []), ...achResult.newOnes]
@@ -466,6 +482,7 @@ export const useGameStore = create<GameStore>()(
           storyUnlocked: newStory,
           activeStoryPopup: storyId?.id || s.activeStoryPopup,
           stageClearCounts,
+          fastestCellClear,
           lockedArchetype,
           achievements: achResult.earned,
           newAchievements,
@@ -510,6 +527,7 @@ export const useGameStore = create<GameStore>()(
           storyAcknowledged: s.storyAcknowledged,
           unlockedLayers: s.unlockedLayers,
           stageClearCounts: s.stageClearCounts,
+          fastestCellClear: s.fastestCellClear,
           achievements: s.achievements,
           newAchievements: s.newAchievements,
         };
@@ -543,6 +561,8 @@ export const useGameStore = create<GameStore>()(
       togglePause: () => set((s) => ({ paused: !s.paused })),
       setShowShop: (v) => set({ showShop: v }),
       setShowEvolve: (v) => set({ showEvolve: v }),
+      setShowSettings: (v) => set({ showSettings: v }),
+      dismissTutorial: () => set({ tutorialActive: false, tutorialDismissed: true }),
 
       dismissStory: (id) => {
         const s = get();
@@ -666,6 +686,10 @@ export const useGameStore = create<GameStore>()(
         // Always ensure achievements fields exist (even on v2)
         if (!persisted.achievements) persisted.achievements = {};
         if (!persisted.newAchievements) persisted.newAchievements = [];
+        if (persisted.showSettings === undefined) persisted.showSettings = false;
+        if (persisted.tutorialDismissed === undefined) persisted.tutorialDismissed = false;
+        if (persisted.maxPopulation === undefined) persisted.maxPopulation = persisted.population || 8;
+        if (persisted.fastestCellClear === undefined) persisted.fastestCellClear = 0;
         return persisted;
       },
     }
@@ -704,6 +728,8 @@ function buildAchievementCtx(s: GameState): AchievementCheckCtx {
     systemsDiscoveredCount,
     techResearchedCount,
     upgradesOwnedCount,
+    maxPopulation: s.maxPopulation || 0,
+    fastestCellClear: s.fastestCellClear || 0,
   };
 }
 

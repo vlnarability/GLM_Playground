@@ -34,6 +34,7 @@ export interface AchievementCheckCtx {
   maxPopulation?: number;
   maxScore?: number;
   totalResources?: number;
+  fastestCellClear?: number; // seconds
 }
 
 export const ACHIEVEMENTS: AchievementDef[] = [
@@ -249,6 +250,89 @@ export const ACHIEVEMENTS: AchievementDef[] = [
     check: (c) => c.upgradesOwnedCount >= 5,
     bonus: { type: "production", value: 0.01 },
   },
+
+  // ===== POPULATION MILESTONES =====
+  {
+    id: "pop_50",
+    name: "Village",
+    desc: "Reach 50 population in a single run.",
+    category: "resource",
+    icon: "🏘️",
+    check: (c) => (c.maxPopulation || 0) >= 50,
+    bonus: { type: "production", value: 0.01 },
+  },
+  {
+    id: "pop_200",
+    name: "Town",
+    desc: "Reach 200 population in a single run.",
+    category: "resource",
+    icon: "🏙️",
+    check: (c) => (c.maxPopulation || 0) >= 200,
+    bonus: { type: "production", value: 0.02 },
+  },
+  {
+    id: "pop_1000",
+    name: "Metropolis",
+    desc: "Reach 1,000 population in a single run.",
+    category: "resource",
+    icon: "🌆",
+    check: (c) => (c.maxPopulation || 0) >= 1000,
+    bonus: { type: "production", value: 0.03 },
+  },
+
+  // ===== STAGE MASTERY TIERS =====
+  {
+    id: "cell_master_5",
+    name: "Cell Veteran",
+    desc: "Evolve past the Cell stage 5 times.",
+    category: "stage",
+    icon: "⚡",
+    check: (c) => (c.stageClearCounts.cell || 0) >= 5,
+    bonus: { type: "production", value: 0.01 },
+  },
+  {
+    id: "creature_master_5",
+    name: "Creature Veteran",
+    desc: "Evolve past the Creature stage 5 times.",
+    category: "stage",
+    icon: "🧬",
+    check: (c) => (c.stageClearCounts.creature || 0) >= 5,
+    bonus: { type: "production", value: 0.01 },
+  },
+  {
+    id: "tribal_master_5",
+    name: "Tribal Veteran",
+    desc: "Evolve past the Tribal stage 5 times.",
+    category: "stage",
+    icon: "🔥",
+    check: (c) => (c.stageClearCounts.tribal || 0) >= 5,
+    bonus: { type: "production", value: 0.01 },
+  },
+
+  // ===== SPEED RUNS =====
+  {
+    id: "fast_cell",
+    name: "Quick Spark",
+    desc: "Evolve past Cell in under 5 minutes of game time.",
+    category: "speed",
+    icon: "⏱️",
+    check: (c) => (c.stageClearCounts.cell || 0) >= 1 && (c.fastestCellClear || 999999) <= 300,
+    bonus: { type: "production", value: 0.02 },
+  },
+
+  // ===== RARE ARCHETYPES =====
+  {
+    id: "first_rare_archetype",
+    name: "Rare Genesis",
+    desc: "Lock in a rare archetype (Lithoid, Necroid, Toxoid, or Extremophile).",
+    category: "lineage",
+    icon: "💠",
+    check: (c) => {
+      const rares = ["lithoid", "necroid", "toxoid", "extremophile"];
+      return (c.archivedArchetypes || []).some((id) => rares.includes(id));
+    },
+    bonus: { type: "production", value: 0.02 },
+  },
 ];
 
 export const ACHIEVEMENT_MAP: Record<string, AchievementDef> = Object.fromEntries(
@@ -258,7 +342,8 @@ export const ACHIEVEMENT_MAP: Record<string, AchievementDef> = Object.fromEntrie
 export const ACHIEVEMENT_CATEGORIES: { id: AchievementCategory; label: string; icon: string }[] = [
   { id: "stage", label: "Stages", icon: "⚡" },
   { id: "lineage", label: "Lineage", icon: "🧬" },
-  { id: "resource", label: "Discovery", icon: "🔬" },
+  { id: "resource", label: "Milestones", icon: "🏘️" },
+  { id: "speed", label: "Speed", icon: "⏱️" },
   { id: "narrative", label: "Narrative", icon: "📖" },
   { id: "layer", label: "Mastery", icon: "🏆" },
 ];

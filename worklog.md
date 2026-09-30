@@ -245,3 +245,100 @@ The game is in a solid, playable state. Cell stage fully functional with manual 
 4. **Save export/import UI** — The store has `exportSave()` and `importSave()` methods but no UI. Add buttons in the Shop or a Settings modal.
 5. **More achievements** — Expand to 50+ achievements (design doc targets 200-300). Add speed-run achievements, resource milestone achievements, crisis survival achievements.
 6. **Tutorial system** — Design doc §11 specifies a Cell-only first-run tutorial. The `tutorialActive` flag exists in state but the tutorial UI isn't built yet.
+
+---
+Task ID: 3
+Agent: webDevReview cron (round 2)
+Task: QA testing, Settings modal with save export/import, tutorial hints, more achievements/story triggers, Codex visual cleanup
+
+## Current Project Status Assessment
+Game is stable and playable. Cell stage fully functional with all features from previous rounds. No compile errors, 0 lint errors in project code. Dev server runs cleanly. Previous round added achievements, offline progress, bulk buy, story popup redesign, and locked-state styling. This round focused on the high-priority recommendations: save export/import UI, Settings consolidation, tutorial system, and more narrative/achievement content.
+
+## Work Completed This Round
+
+### Bug Fixes
+- None found during QA. Game loads cleanly with no console errors.
+
+### New Features
+1. **Settings modal** (`SettingsModal.tsx`):
+   - Comprehensive settings dialog accessible via gear icon in header
+   - **Save export**: Generate base64-encoded save string, copy to clipboard, or download as `.txt` file
+   - **Save import**: Paste save string or load from file, with success/error feedback
+   - **Game stats summary**: 8 stat cards (run time, population, total runs, achievements, galactic wins, EP, stage, last saved)
+   - **Manual save button**: Force-save now (in addition to 30s auto-save)
+   - **Danger zone**: Hard reset with two-step confirmation (moved from inline header dialog)
+   - Replaced the inline hard-reset confirm dialog in the Header with a cleaner Settings button
+
+2. **Tutorial hints system** (`TutorialHints.tsx`):
+   - Lightweight first-run contextual hints that appear in bottom-left corner
+   - 5 hint stages that trigger based on game state:
+     - "Tap to gather" (first 5 seconds, no systems)
+     - "Build your first system" (after 5s, no systems) → CTA opens Systems tab
+     - "Research technology" (first system built, no tech) → CTA opens Tech tab
+     - "Your lineage is forming" (first affinity earned, not locked)
+     - "Ready to evolve" (all evolve requirements met) → CTA opens Actions tab
+   - Minimizable (– button) and dismissible per-hint or globally ("Disable" button)
+   - Uses `tutorialDismissed` flag in state for permanent disable
+   - Does not persist dismissed hints (resets on reload) — intentional, so hints reappear for new players
+
+3. **More achievements** (expanded from 22 → 31):
+   - Population milestones: Village (50), Town (200), Metropolis (1000)
+   - Stage mastery tiers: Cell Veteran, Creature Veteran, Tribal Veteran (5 clears each)
+   - Speed run: Quick Spark (evolve past Cell in < 5 min)
+   - Rare archetype: Rare Genesis (lock in any rare archetype)
+   - Added `maxPopulation` tracking to run state (peak population for achievements)
+   - Added `fastestCellClear` tracking to meta state (best Cell clear time)
+   - New "Speed" category in the achievements filter
+
+4. **More story triggers** (expanded from 4 → 8):
+   - `first_autobuyer` — fires when you build a Membrane Pump (first automation)
+   - `first_tech` — fires when you research your first technology
+   - `population_boom` — fires when population reaches 50
+   - `first_cap` — fires when any resource first hits capacity
+   - 4 new story entries with narrative text matching the game's mythic tone
+   - All triggers fire during gameplay via the tick's story check
+
+### Styling Improvements
+5. **Codex tab visual cleanup** (VLM feedback from round 1):
+   - Systems Catalogue and Tech Tree Index now show discovered items FIRST
+   - Undiscovered items collapsed into a single dashed summary line: "32 undiscovered — keep building to find them"
+   - Added count badges to section headers (e.g., "0/32")
+   - Eliminates the wall of "???" placeholders that created visual noise
+   - Much cleaner empty-state experience for new players
+
+6. **Header cleanup**:
+   - Removed inline hard-reset confirm dialog (moved to Settings modal)
+   - Removed `RotateCcw` icon button, replaced with `Settings` gear icon
+   - Cleaner, less cluttered header
+
+### Code Quality
+- 0 lint errors in project code
+- Save migration handles all new fields (`showSettings`, `tutorialDismissed`, `maxPopulation`, `fastestCellClear`)
+- Achievement checking includes `maxPopulation` and `fastestCellClear` in context
+- `fastestCellClear` tracked in evolveStage when clearing Cell stage
+- `maxPopulation` tracked in tick (max of current and previous)
+- Story triggers use safe optional chaining to avoid crashes on fresh state
+
+## Verification Results
+- Dev server compiles cleanly, no module-not-found or TypeScript errors
+- Page loads with 5 resource chips, no console errors
+- Settings modal opens via gear icon, shows all sections (export, import, save, danger zone)
+- Export generates valid base64 save string, copy/download buttons work
+- Tutorial hint "Build your first system" appears in bottom-left with CTA button
+- Story popup "The Full Vessel" fires when a resource hits cap (new trigger working)
+- Codex tab shows "0/32" badge + "32 undiscovered" summary instead of 32 "???" cards
+- 0 lint errors in project code (6 warnings all in `upload/` vanilla JS)
+
+## Unresolved Issues / Risks
+1. **Tutorial hints don't persist dismissal**: Dismissed hints reset on page reload. This is intentional for new-player guidance but may annoy returning players. The "Disable" button permanently hides all hints via `tutorialDismissed`.
+2. **Offline progress testing**: Still hard to test via agent-browser due to `beforeunload` saving. Code logic verified correct for real tab-close/reopen.
+3. **Future stages playtest**: Creature/Tribal/Civilization stages have data but haven't been playtested end-to-end. Balance may need tuning.
+4. **PWA setup not yet done**: Web manifest + service worker for true offline access still pending (design doc §12.1).
+
+## Priority Recommendations for Next Phase
+1. **Playtest later stages** — Run through Creature → Tribal → Civilization to verify progression and archetype lock-in at boundaries.
+2. **PWA setup** — Add `manifest.json` + service worker for installable offline play.
+3. **More achievements** — Expand to 50+ (design doc targets 200-300). Add crisis survival, resource threshold, and alignment achievements.
+4. **Stage-specific story triggers** — Add triggers for each stage's mid-point and exit (currently only Cell has mid-stage triggers).
+5. **Balance tuning** — Verify the Cell stage takes 5-60 min as designed (§2.3). May need to adjust system costs/production rates.
+6. **Mobile layout audit** — Test the responsive design on actual mobile viewport sizes.
