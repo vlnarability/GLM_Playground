@@ -37,7 +37,7 @@ export function TabNav() {
   return (
     <>
       {/* Desktop tab bar */}
-      <div className="desktop-only sticky top-[57px] z-20 glass-strong border-b border-border">
+      <div className="desktop-only sticky top-[95px] z-20 glass-strong border-b border-border">
         <div className="max-w-7xl mx-auto px-2 sm:px-4 flex items-center gap-1 overflow-x-auto no-scrollbar py-1.5">
           {TABS.map((tab) => (
             <button

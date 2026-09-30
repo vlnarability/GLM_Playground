@@ -184,6 +184,76 @@ export const STORY_ENTRIES: StoryEntry[] = [
     trigger: "Fill a resource to capacity",
     category: "milestone",
   },
+  {
+    id: "agriculture_mastered",
+    title: "The Seed is Planted",
+    body: "The tribe learns to keep what grows. A seed, dropped and forgotten, returns as a stalk. " +
+      "Hunger, the ancient enemy, becomes a thing that can be planned against. The first calendar is carved in bone.",
+    stage: "tribal",
+    layer: "Evolution",
+    trigger: "Research Agriculture",
+    category: "milestone",
+  },
+  {
+    id: "first_writing",
+    title: "The First Mark",
+    body: "A scratch on clay. A notch on bone. The first symbol that means the same thing tomorrow as it does today. " +
+      "Memory, until now, has lived only in the minds of the old. Now it can outlive them.",
+    stage: "tribal",
+    layer: "Evolution",
+    trigger: "Research Writing",
+    category: "milestone",
+  },
+  {
+    id: "first_city",
+    title: "The First Walls",
+    body: "Stone rises in courses taller than a man. Inside, grain is counted, laws are carved, and the names of " +
+      "the dead are written on pillars. Outside, the wild begins to learn the meaning of 'border.'",
+    stage: "civilization",
+    layer: "Evolution",
+    trigger: "Build 3 civilization systems",
+    category: "stage",
+  },
+  {
+    id: "scientific_method",
+    title: "The Method",
+    body: "Not just knowledge — but a way to test knowledge. A question becomes a hypothesis, becomes an experiment, " +
+      "becomes a law. The universe, until now a mystery to be endured, becomes a puzzle to be solved.",
+    stage: "civilization",
+    layer: "Evolution",
+    trigger: "Research Scientific Method",
+    category: "milestone",
+  },
+  {
+    id: "first_empire_decree",
+    title: "The First Decree",
+    body: "A word from the throne reshapes provinces. Roads are ordered. Laws are unified. For the first time, " +
+      "millions of strangers move to the rhythm of a single will — and the will begins to dream of more.",
+    stage: "empire",
+    layer: "Evolution",
+    trigger: "Build 2 empire systems",
+    category: "stage",
+  },
+  {
+    id: "first_colony",
+    title: "The First Shore Beyond",
+    body: "A ship breaks the sky and does not fall. On a new world, pioneers plant a flag in soil no ancestor " +
+      "ever touched. The horizon, until now a wall, becomes a door.",
+    stage: "solar",
+    layer: "Evolution",
+    trigger: "Build a Colony Ship",
+    category: "milestone",
+  },
+  {
+    id: "ascension_researched",
+    title: "The Path Beyond Matter",
+    body: "The equations align. A pattern emerges in the cosmic background — not noise, but a signature. " +
+      "The civilization begins to suspect that matter is not the final word, but the first chapter.",
+    stage: "galactic",
+    layer: "Evolution",
+    trigger: "Research Ascension Theory",
+    category: "milestone",
+  },
 ];
 
 export const STORY_MAP: Record<string, StoryEntry> = Object.fromEntries(
@@ -197,14 +267,28 @@ export interface StoryTrigger {
 }
 
 export const STORY_TRIGGERS: StoryTrigger[] = [
+  // Cell stage
   { id: "first_membrane_holds", condition: (s) => totalSystems(s) >= 3 },
   { id: "nucleus_forms", condition: (s) => !!s.ownedSystems?.["nucleus"] },
-  { id: "instinct_learns", condition: (s) => stageSystemsCount(s, "creature") >= 5 },
-  { id: "first_circle", condition: (s) => !!s.ownedSystems?.["totem"] },
   { id: "first_autobuyer", condition: (s) => !!s.ownedSystems?.["membrane_pump"] },
   { id: "first_tech", condition: (s) => Object.keys(s.technologies || {}).some((k) => s.technologies[k]) },
   { id: "population_boom", condition: (s) => (s.population || 0) >= 50 },
   { id: "first_cap", condition: (s) => hasResourceAtCap(s) },
+  // Creature stage
+  { id: "instinct_learns", condition: (s) => stageSystemsCount(s, "creature") >= 5 },
+  // Tribal stage
+  { id: "first_circle", condition: (s) => !!s.ownedSystems?.["totem"] },
+  { id: "agriculture_mastered", condition: (s) => !!s.technologies?.["agriculture"] },
+  { id: "first_writing", condition: (s) => !!s.technologies?.["writing"] },
+  // Civilization stage
+  { id: "first_city", condition: (s) => stageSystemsCount(s, "civilization") >= 3 },
+  { id: "scientific_method", condition: (s) => !!s.technologies?.["scientific_method"] },
+  // Empire stage
+  { id: "first_empire_decree", condition: (s) => stageSystemsCount(s, "empire") >= 2 },
+  // Solar stage
+  { id: "first_colony", condition: (s) => !!s.ownedSystems?.["colony_ship"] },
+  // Galactic stage
+  { id: "ascension_researched", condition: (s) => !!s.technologies?.["ascension_theory"] },
 ];
 
 function totalSystems(s: any): number {

@@ -4,6 +4,7 @@ import { useGameStore } from "@/game/state/store";
 import { STAGES } from "@/game/data/stages";
 import { SYSTEMS } from "@/game/data/systems";
 import { TECHS } from "@/game/data/techs";
+import { ARCHETYPE_MAP, dominantArchetype } from "@/game/data/archetypes";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -20,9 +21,13 @@ export function EvolveModal() {
   const resources = useGameStore((s) => s.resources);
   const time = useGameStore((s) => s.time);
   const upgrades = useGameStore((s) => s.upgrades);
+  const archetypeAffinity = useGameStore((s) => s.archetypeAffinity);
+  const lockedArchetype = useGameStore((s) => s.lockedArchetype);
   const evolveStage = useGameStore((s) => s.evolveStage);
 
   const stage = STAGES[stageIndex];
+  const isLocked = !!lockedArchetype;
+  const domArch = dominantArchetype(archetypeAffinity);
   const next = STAGES[stageIndex + 1];
   const isFinal = !next;
 
@@ -103,6 +108,38 @@ export function EvolveModal() {
                 <Badge variant="outline" className="text-xs ml-auto">{next.duration}</Badge>
               </div>
               <p className="text-xs text-muted-foreground italic leading-relaxed">{next.tagline}. {next.desc}</p>
+            </div>
+          )}
+
+          {/* Archetype lock-in warning (Creature → Tribal) */}
+          {stage.id === "creature" && !isLocked && domArch && (
+            <div
+              className="rounded-lg border p-3 flex items-start gap-3"
+              style={{
+                background: `${ARCHETYPE_MAP[domArch]?.color}15`,
+                borderColor: `${ARCHETYPE_MAP[domArch]?.color}50`,
+              }}
+            >
+              <div
+                className="w-9 h-9 rounded-lg flex items-center justify-center text-lg shrink-0 font-mono"
+                style={{ background: `${ARCHETYPE_MAP[domArch]?.color}25`, color: ARCHETYPE_MAP[domArch]?.color }}
+              >
+                {ARCHETYPE_MAP[domArch]?.glyph}
+              </div>
+              <div className="min-w-0">
+                <div className="text-xs font-semibold uppercase tracking-wide mb-0.5" style={{ color: ARCHETYPE_MAP[domArch]?.color }}>
+                  Lineage Will Lock
+                </div>
+                <p className="text-xs text-foreground/90 leading-snug">
+                  Evolving to Tribal will lock your lineage as{" "}
+                  <span className="font-bold" style={{ color: ARCHETYPE_MAP[domArch]?.color }}>
+                    {ARCHETYPE_MAP[domArch]?.name}
+                  </span>
+                  . This grants{" "}
+                  <span className="font-semibold">{ARCHETYPE_MAP[domArch]?.bonus.label}</span>{" "}
+                  for the rest of the run. This cannot be changed.
+                </p>
+              </div>
             </div>
           )}
 

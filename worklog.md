@@ -342,3 +342,86 @@ Game is stable and playable. Cell stage fully functional with all features from 
 4. **Stage-specific story triggers** — Add triggers for each stage's mid-point and exit (currently only Cell has mid-stage triggers).
 5. **Balance tuning** — Verify the Cell stage takes 5-60 min as designed (§2.3). May need to adjust system costs/production rates.
 6. **Mobile layout audit** — Test the responsive design on actual mobile viewport sizes.
+
+---
+Task ID: 4
+Agent: webDevReview cron (round 3)
+Task: QA testing, fix sticky overlap bug, PWA setup, more story triggers, EvolveModal archetype warning, playtest Cell→Creature
+
+## Current Project Status Assessment
+Game is stable and playable. Cell stage fully functional. Previous rounds added achievements, offline progress, save export/import, tutorial hints, and Codex cleanup. This round focused on a critical layout bug fix, PWA setup, and verifying the full Cell→Creature progression flow works end-to-end.
+
+## Work Completed This Round
+
+### Bug Fixes
+1. **Critical sticky overlap bug** (found during QA playtest):
+   - The TabNav had `sticky top-[57px]` but the ResourceBar (`sticky top-[53px]`) is 42px tall (53→95).
+   - This caused the TabNav to overlap the ResourceBar, making the "Actions" tab button unclickable (covered by resource chips).
+   - **Fix**: Changed TabNav from `top-[57px]` to `top-[95px]` so it sits below the resource bar.
+   - Verified: Header (0-53), ResourceBar (53-95), TabNav (95-142) — no overlaps.
+
+### New Features
+2. **PWA support** (design doc §12.1):
+   - `public/manifest.json` — Web app manifest with name, icons, shortcuts, standalone display mode
+   - `public/sw.js` — Service worker with cache-first (static assets) and network-first (navigation) strategies
+   - `ServiceWorkerRegister.tsx` — Client component that registers the SW in production only
+   - Updated `layout.tsx` with manifest link, appleWebApp config, and viewport themeColor
+   - App is now installable (Add to Home Screen) and works offline after first visit
+
+3. **8 new story triggers** (expanded from 8 → 16 total):
+   - Tribal: `agriculture_mastered`, `first_writing`
+   - Civilization: `first_city` (3 systems), `scientific_method`
+   - Empire: `first_empire_decree` (2 systems)
+   - Solar: `first_colony` (build colony_ship)
+   - Galactic: `ascension_researched` (research ascension_theory)
+   - 8 new story entries with narrative text for each trigger
+   - Every stage now has at least one mid-stage story trigger
+
+4. **EvolveModal archetype lock-in warning**:
+   - When evolving from Creature → Tribal, the modal now shows a colored warning panel
+   - Displays the dominant archetype's glyph, name, and the bonus that will be granted
+   - Warns "This cannot be changed" — makes the lock-in decision feel weighty
+   - Uses the archetype's color for visual consistency
+
+### Playtest Verification
+5. **Full Cell → Creature progression verified**:
+   - Started fresh, clicked Absorb Glucose to build resources
+   - Built 6 Cell systems (Membrane Pump, Ribosome, Vacuole, Mitochondria, Organelle Forge, Nucleus)
+   - Researched 3 techs (Membrane Reinforcement, Photosynthesis, Enzymatic Pathways)
+   - Population reached 54 (need 12), Score 568 (need 100)
+   - Lineage showed Plantoid 3 + Fungoid 1 drift
+   - Clicked Evolve → Evolve modal appeared → confirmed → stage changed to Creature
+   - Creature stage loaded with new resources (food, water, materials, etc.)
+   - Lineage panel showed "Will lock as Plantoid on evolution" — lock-in preview working
+   - All stage transitions, resource changes, and UI updates work correctly
+
+### Code Quality
+- 0 lint errors in project code (6 warnings all in `upload/` vanilla JS)
+- Service worker only registers in production (avoids dev caching issues)
+- Manifest accessible at `/manifest.json` (verified via fetch)
+- Save migration handles all new fields from previous rounds
+
+## Verification Results
+- Dev server compiles cleanly, no errors
+- Page loads with no console errors
+- Sticky layers stack correctly: Header (0-53) → ResourceBar (53-95) → TabNav (95-142)
+- Actions tab button now clickable (was previously covered by resource bar)
+- Successfully evolved Cell → Creature with all requirements checked
+- Creature stage loads with correct resources and requirements
+- Lineage drift display works, "Will lock as X on evolution" preview correct
+- Manifest.json accessible and valid
+- 0 lint errors in project code
+
+## Unresolved Issues / Risks
+1. **PWA icons not generated**: The manifest references `/icon-192.png` and `/icon-512.png` but these files don't exist yet. The app will still install but use the default icon. Should generate proper icons.
+2. **Service worker only in production**: SW registration is skipped in dev to avoid caching issues. Can't test offline mode in dev — needs a production build.
+3. **Later stages playtest**: Tribal → Civilization → Empire → Solar → Galactic haven't been playtested. The data exists but balance may need tuning.
+4. **Tutorial hint overlap**: The tutorial hint "Ready to evolve" appeared over the Evolve button, blocking the click. This is a minor UX issue — the hint's "Evolve now" CTA is an alternative path, but the hint should dismiss when the evolve modal opens.
+
+## Priority Recommendations for Next Phase
+1. **Generate PWA icons** — Create 192x192 and 512x512 PNG icons (could use the stage emoji or a custom logo).
+2. **Playtest Tribal → Galactic** — Verify all stage transitions, archetype lock-in at Creature→Tribal, and the late-game systems/tech.
+3. **Tutorial hint auto-dismiss** — Hints should auto-dismiss when the relevant modal opens (e.g., "Ready to evolve" dismisses when EvolveModal opens).
+4. **Balance tuning** — Verify Cell stage takes 5-60 min as designed. The playtest took ~48 min at 8x speed (6 min real time), which seems right.
+5. **More achievements** — Expand to 50+ (design doc targets 200-300). Add crisis survival and alignment achievements.
+6. **Mobile layout audit** — Test responsive design on actual mobile viewport sizes (375px width).

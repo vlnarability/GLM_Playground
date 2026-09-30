@@ -1,0 +1,37 @@
+{
+  "name": "Evolution Idle — A Cosmic Incremental",
+  "short_name": "Evolution Idle",
+  "description": "A narrative-driven incremental game about a god awakening. Guide civilization from single-cell organisms to galactic transcendence across 7 stages and 10 divine layers.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0a0a1a",
+  "theme_color": "#0a0a1a",
+  "orientation": "any",
+  "categories": ["games", "entertainment"],
+  "icons": [
+    {
+      "src": "/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Open Shop",
+      "short_name": "Shop",
+      "url": "/?action=shop"
+    },
+    {
+      "name": "View Story",
+      "short_name": "Story",
+      "url": "/?tab=story"
+    }
+  ]
+}
