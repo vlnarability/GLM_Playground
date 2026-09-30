@@ -5,10 +5,12 @@ import { STAGES } from "@/game/data/stages";
 import { SYSTEMS } from "@/game/data/systems";
 import { TECHS } from "@/game/data/techs";
 import { UPGRADES } from "@/game/data/upgrades";
+import { ACHIEVEMENTS } from "@/game/data/achievements";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
-import { ScrollText, CheckCircle2, Lock } from "lucide-react";
+import { ScrollText, CheckCircle2, Lock, BarChart3 } from "lucide-react";
+import { formatTime, formatNumber } from "../shared/format";
 
 export function CodexTab() {
   const stageClearCounts = useGameStore((s) => s.stageClearCounts);
@@ -19,11 +21,20 @@ export function CodexTab() {
   const totalRuns = useGameStore((s) => s.totalRuns);
   const archive = useGameStore((s) => s.archive);
   const storyUnlocked = useGameStore((s) => s.storyUnlocked);
+  const achievements = useGameStore((s) => s.achievements || {});
+  const totalPlayTime = useGameStore((s) => s.totalPlayTime || 0);
+  const totalActions = useGameStore((s) => s.totalActions || 0);
+  const totalSystemsBuilt = useGameStore((s) => s.totalSystemsBuilt || 0);
+  const totalTechResearched = useGameStore((s) => s.totalTechResearched || 0);
+  const totalEventsResolved = useGameStore((s) => s.totalEventsResolved || 0);
+  const fastestCellClear = useGameStore((s) => s.fastestCellClear || 0);
+  const archivedArchetypes = useGameStore((s) => s.archivedArchetypes || []);
 
   const totalSystemsOwned = Object.values(ownedSystems).filter((c) => c > 0).length;
   const totalTechOwned = Object.keys(technologies).filter((k) => technologies[k]).length;
   const totalUpgradesOwned = Object.values(upgrades).filter((c) => c > 0).length;
   const storyCount = Object.keys(storyUnlocked).filter((k) => storyUnlocked[k]).length;
+  const earnedAchievements = ACHIEVEMENTS.filter((a) => achievements[a.id]).length;
 
   return (
     <div className="space-y-4">
@@ -68,6 +79,33 @@ export function CodexTab() {
                 </div>
               );
             })}
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Lifetime statistics */}
+      <Card className="glass-panel">
+        <CardHeader className="pb-2">
+          <CardTitle className="text-sm flex items-center gap-2">
+            <BarChart3 className="w-4 h-4 text-primary" />
+            Lifetime Statistics
+          </CardTitle>
+          <CardDescription>Cumulative activity across all runs.</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+            <CodexStat label="Total Play Time" value={formatTime(totalPlayTime)} icon="⏱️" />
+            <CodexStat label="Actions Clicked" value={formatNumber(totalActions, 0)} icon="👆" />
+            <CodexStat label="Systems Built" value={formatNumber(totalSystemsBuilt, 0)} icon="🏗️" />
+            <CodexStat label="Techs Researched" value={formatNumber(totalTechResearched, 0)} icon="🔬" />
+            <CodexStat label="Events Resolved" value={formatNumber(totalEventsResolved, 0)} icon="🎲" />
+            <CodexStat label="Achievements" value={`${earnedAchievements}/${ACHIEVEMENTS.length}`} icon="🏆" />
+            <CodexStat label="Archetypes Locked" value={`${archivedArchetypes.length}/13`} icon="🧬" />
+            <CodexStat
+              label="Fastest Cell Clear"
+              value={fastestCellClear > 0 ? formatTime(fastestCellClear) : "—"}
+              icon="⚡"
+            />
           </div>
         </CardContent>
       </Card>

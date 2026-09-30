@@ -10,7 +10,7 @@ import { Separator } from "@/components/ui/separator";
 import { useState } from "react";
 import {
   Settings, Download, Upload, Save, AlertTriangle, Copy, Check,
-  Clock, Users, Star, Award, Database,
+  Clock, Users, Star, Award, Database, Keyboard,
 } from "lucide-react";
 import { formatNumber, formatTime } from "../shared/format";
 
@@ -237,6 +237,34 @@ export function SettingsModal() {
 
         <Separator className="my-3" />
 
+        {/* Keyboard shortcuts */}
+        <div className="space-y-2">
+          <h3 className="text-sm font-semibold flex items-center gap-1.5">
+            <Keyboard className="w-4 h-4 text-primary" />
+            Keyboard Shortcuts
+          </h3>
+          <p className="text-xs text-muted-foreground">Power-user controls. Active when no input is focused.</p>
+          <div className="grid grid-cols-2 gap-1.5 text-xs">
+            <Shortcut keys="Space" desc="Pause / resume" />
+            <Shortcut keys="1-4" desc="Game speed (1×, 2×, 4×, 8×)" />
+            <Shortcut keys="Q" desc="Actions tab" />
+            <Shortcut keys="W" desc="Systems tab" />
+            <Shortcut keys="E" desc="Production tab" />
+            <Shortcut keys="R" desc="Tech tab" />
+            <Shortcut keys="T" desc="Story tab" />
+            <Shortcut keys="Y" desc="Codex tab" />
+            <Shortcut keys="U" desc="Awards tab" />
+            <Shortcut keys="I" desc="Archive tab" />
+            <Shortcut keys="O" desc="Log tab" />
+            <Shortcut keys="S" desc="Open Shop" />
+            <Shortcut keys="B" desc="Open Evolve" />
+            <Shortcut keys="," desc="Open Settings" />
+            <Shortcut keys="Esc" desc="Close modal / dismiss popup" />
+          </div>
+        </div>
+
+        <Separator className="my-3" />
+
         {/* Danger zone */}
         <div className="space-y-2">
           <h3 className="text-sm font-semibold flex items-center gap-1.5 text-red-400">
@@ -296,6 +324,17 @@ function StatCard({ icon, label, value }: { icon: React.ReactNode; label: string
         {label}
       </div>
       <div className="text-sm font-bold tabular-nums truncate">{value}</div>
+    </div>
+  );
+}
+
+function Shortcut({ keys, desc }: { keys: string; desc: string }) {
+  return (
+    <div className="flex items-center gap-2">
+      <kbd className="px-1.5 py-0.5 rounded border border-border bg-muted/40 text-[0.6rem] font-mono font-semibold text-foreground min-w-[2rem] text-center shrink-0">
+        {keys}
+      </kbd>
+      <span className="text-xs text-muted-foreground truncate">{desc}</span>
     </div>
   );
 }

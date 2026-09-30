@@ -2,6 +2,7 @@
 
 import { useGameStore } from "@/game/state/store";
 import { useGameLoop } from "@/game/hooks/useGameLoop";
+import { useKeyboardShortcuts } from "@/game/hooks/useKeyboardShortcuts";
 import { STAGES } from "@/game/data/stages";
 import { Header } from "./Header";
 import { StagePanel } from "./StagePanel";
@@ -27,6 +28,7 @@ import { TutorialHints } from "./TutorialHints";
 
 export function GameShell() {
   const { offlineSummary, dismissOffline } = useGameLoop();
+  useKeyboardShortcuts();
   const currentTab = useGameStore((s) => s.currentTab);
   const stageIndex = useGameStore((s) => s.stageIndex);
   const stage = STAGES[stageIndex];

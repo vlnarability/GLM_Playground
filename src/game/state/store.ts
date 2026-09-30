@@ -47,6 +47,10 @@ function initialMetaState(): Partial<GameState> {
     stageClearCounts: Object.fromEntries(STAGE_IDS.map((s) => [s, 0])) as Record<StageId, number>,
     fastestCellClear: 0,
     totalEventsResolved: 0,
+    totalPlayTime: 0,
+    totalActions: 0,
+    totalSystemsBuilt: 0,
+    totalTechResearched: 0,
     upgrades: Object.fromEntries(UPGRADES.map((u) => [u.id, 0])),
     storyUnlocked: { first_spark: true },
     storyAcknowledged: {},
@@ -253,6 +257,7 @@ export const useGameStore = create<GameStore>()(
           newAchievements,
           activeEvent,
           eventCooldown,
+          totalPlayTime: (s.totalPlayTime || 0) + realDt,
         });
       },
 
@@ -302,7 +307,10 @@ export const useGameStore = create<GameStore>()(
           res[r] = Math.min(cap, (res[r] || 0) + amount);
         }
 
-        set({ resources: res });
+        set({
+          resources: res,
+          totalActions: (s.totalActions || 0) + 1,
+        });
       },
 
       buySystem: (systemId, qty) => {
@@ -369,6 +377,7 @@ export const useGameStore = create<GameStore>()(
           archetypeAffinity,
           storyUnlocked: newStory,
           activeStoryPopup: activePopup,
+          totalSystemsBuilt: (s.totalSystemsBuilt || 0) + bought,
         });
         get().addToLog(`Built ${bought}× ${sys.name}.`);
       },
@@ -414,7 +423,12 @@ export const useGameStore = create<GameStore>()(
           archetypeAffinity[tech.grantsAffinity.archetype] =
             (archetypeAffinity[tech.grantsAffinity.archetype] || 0) + tech.grantsAffinity.amount;
         }
-        set({ resources: res, technologies, archetypeAffinity });
+        set({
+          resources: res,
+          technologies,
+          archetypeAffinity,
+          totalTechResearched: (s.totalTechResearched || 0) + 1,
+        });
         get().addToLog(`Researched ${tech.name}.`);
       },
 
@@ -560,6 +574,10 @@ export const useGameStore = create<GameStore>()(
           stageClearCounts: s.stageClearCounts,
           fastestCellClear: s.fastestCellClear,
           totalEventsResolved: s.totalEventsResolved,
+          totalPlayTime: s.totalPlayTime,
+          totalActions: s.totalActions,
+          totalSystemsBuilt: s.totalSystemsBuilt,
+          totalTechResearched: s.totalTechResearched,
           achievements: s.achievements,
           newAchievements: s.newAchievements,
         };
@@ -795,6 +813,10 @@ export const useGameStore = create<GameStore>()(
         if (persisted.eventCooldown === undefined) persisted.eventCooldown = 60;
         if (!persisted.eventHistory) persisted.eventHistory = [];
         if (persisted.totalEventsResolved === undefined) persisted.totalEventsResolved = 0;
+        if (persisted.totalPlayTime === undefined) persisted.totalPlayTime = 0;
+        if (persisted.totalActions === undefined) persisted.totalActions = 0;
+        if (persisted.totalSystemsBuilt === undefined) persisted.totalSystemsBuilt = 0;
+        if (persisted.totalTechResearched === undefined) persisted.totalTechResearched = 0;
         return persisted;
       },
     }

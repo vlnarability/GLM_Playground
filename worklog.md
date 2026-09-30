@@ -564,3 +564,72 @@ Game is stable and playable. Previous rounds added PWA support, random events (1
 4. **More achievements** — Expand to 50+ (design doc targets 200-300). Add stage-specific and archetype-specific achievements.
 5. **PWA production build test** — Verify service worker caches correctly for offline play.
 6. **Sound/audio** — Design doc §13.6 mentions audio may be added later. Could add subtle event sounds.
+
+---
+Task ID: 7
+Agent: webDevReview cron (round 6)
+Task: QA testing, keyboard shortcuts, lifetime statistics panel, Settings shortcuts reference
+
+## Current Project Status Assessment
+Game is stable and playable. Previous rounds added event history, expanded events (18 total), event achievements, and collapsed locked achievements. This round focused on power-user keyboard shortcuts, a lifetime statistics panel, and addressing VLM feedback about filling negative space.
+
+## Work Completed This Round
+
+### New Features
+1. **Keyboard shortcuts** (`useKeyboardShortcuts.ts` hook):
+   - Space = pause/resume
+   - 1-4 = game speed (1×, 2×, 4×, 8×)
+   - Q/W/E/R/T/Y/U/I/O = tab navigation (Actions/Systems/Production/Tech/Story/Codex/Awards/Archive/Log)
+   - S = open Shop, B = open Evolve, , = open Settings
+   - Escape = close modal / dismiss popup
+   - Shortcuts disabled when typing in inputs, when a story popup is active, or when an event is offering choices
+   - Wired into GameShell via `useKeyboardShortcuts()`
+
+2. **Keyboard shortcuts reference in Settings** (VLM feedback):
+   - New "Keyboard Shortcuts" section in the Settings modal
+   - Shows all 15 shortcuts with `<kbd>` styled key caps and descriptions
+   - Two-column grid layout, compact and scannable
+
+3. **Lifetime statistics panel** (VLM feedback — fill negative space):
+   - New "Lifetime Statistics" card in the Codex tab
+   - Tracks 8 cumulative stats across all runs:
+     - Total Play Time (formatTime)
+     - Actions Clicked (manual action count)
+     - Systems Built (total purchases)
+     - Techs Researched
+     - Events Resolved
+     - Achievements (earned/total)
+     - Archetypes Locked (x/13)
+     - Fastest Cell Clear (best time)
+   - Added `totalPlayTime`, `totalActions`, `totalSystemsBuilt`, `totalTechResearched` to meta state
+   - All stats persist across prestige and are carried through migration
+
+### Code Quality
+- 0 lint errors in project code
+- New state fields have migration defaults
+- Statistics tracking wired into tick (play time), performAction (actions), buySystem (systems), buyTech (techs)
+- Keyboard shortcuts properly disabled during modals/events to avoid conflicts
+
+## Verification Results
+- Dev server compiles cleanly (one transient Fast Refresh error resolved on reload)
+- Page loads with 5 resource chips, no console errors
+- Settings modal shows "Keyboard Shortcuts" section with all 15 shortcuts
+- Codex tab shows "Lifetime Statistics" with Total Play Time: 5m 14s, Actions: 0, etc.
+- Keyboard shortcut W successfully switched from Codex to Systems tab (after resolving active event)
+- Keyboard shortcut Space successfully paused the game (button changed to "Resume")
+- Shortcuts correctly disabled when event modal is active (tested — W didn't switch during event)
+- 0 lint errors in project code
+
+## Unresolved Issues / Risks
+1. **Later stages playtest**: Tribal → Galactic still not playtested end-to-end. Balance is unverified.
+2. **Event frequency**: Events fire every 90-180s which may feel frequent during active play. Could add a settings toggle.
+3. **PWA production test**: Service worker only registers in production. Offline mode untested.
+4. **Keyboard shortcut discoverability**: Shortcuts are documented in Settings but not discoverable otherwise. Could add a "?" hint.
+
+## Priority Recommendations for Next Phase
+1. **Playtest Tribal → Galactic** — Verify all stage transitions, events, and systems work end-to-end.
+2. **Event frequency setting** — Add a toggle in Settings to reduce event frequency or disable events.
+3. **More stage-specific content** — Add story triggers and events for each stage's mid-point and exit.
+4. **Balance tuning** — Verify Cell stage takes 5-60 min as designed (§2.3).
+5. **PWA production build test** — Verify service worker caches correctly for offline play.
+6. **Sound effects** — Design doc §13.6 mentions audio may be added later. Could add subtle event/purchase sounds.

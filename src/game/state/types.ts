@@ -154,6 +154,10 @@ export interface GameState {
   stageClearCounts: Record<StageId, number>;
   fastestCellClear: number; // seconds, best time clearing Cell stage
   totalEventsResolved: number; // across all runs
+  totalPlayTime: number; // seconds across all runs
+  totalActions: number; // manual actions clicked across all runs
+  totalSystemsBuilt: number; // systems built across all runs
+  totalTechResearched: number; // techs researched across all runs
   upgrades: Record<string, number>;
   storyUnlocked: Record<string, boolean>;
   storyAcknowledged: Record<string, boolean>;
