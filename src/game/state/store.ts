@@ -11,6 +11,7 @@ import { TECH_MAP, TECHS } from "../data/techs";
 import { UPGRADE_MAP, UPGRADES, upgradeCost } from "../data/upgrades";
 import { STORY_MAP, STORY_TRIGGERS } from "../data/story";
 import { ARCHETYPE_MAP, dominantArchetype } from "../data/archetypes";
+import { ACHIEVEMENTS, achievementBonus, type AchievementCheckCtx } from "../data/achievements";
 
 const STORAGE_KEY = "evolution_idle_v2";
 
@@ -48,6 +49,8 @@ function initialMetaState(): Partial<GameState> {
     archive: [],
     archivedArchetypes: [],
     unlockedLayers: { evolution: true },
+    achievements: {},
+    newAchievements: [],
     currentTab: "actions",
     speed: 1,
     paused: false,
@@ -185,6 +188,23 @@ export const useGameStore = create<GameStore>()(
           }
         }
 
+        // Check achievements periodically (every ~2 seconds of game time)
+        let achievements = s.achievements;
+        let newAchievements = s.newAchievements;
+        const checkInterval = 2.0;
+        const lastCheck = (s as any)._lastAchCheck || 0;
+        if (newTime - lastCheck >= checkInterval) {
+          const curState = { ...s, resources, time: newTime } as GameState;
+          const result = checkAchievements(curState);
+          if (result.newOnes.length > 0) {
+            achievements = result.earned;
+            newAchievements = [...(newAchievements || []), ...result.newOnes];
+          } else if (Object.keys(result.earned).length !== Object.keys(achievements || {}).length) {
+            achievements = result.earned;
+          }
+          (s as any)._lastAchCheck = newTime; // not persisted, just a runtime marker
+        }
+
         set({
           resources,
           capacities,
@@ -193,6 +213,8 @@ export const useGameStore = create<GameStore>()(
           populationProgress,
           storyUnlocked: newStory,
           activeStoryPopup: activePopup,
+          achievements,
+          newAchievements,
         });
       },
 
@@ -430,6 +452,13 @@ export const useGameStore = create<GameStore>()(
 
         const stageClearCounts = { ...s.stageClearCounts, [stage.id]: (s.stageClearCounts[stage.id] || 0) + 1 };
 
+        // Check achievements after stage clear
+        const postEvolveState = { ...s, stageClearCounts, lockedArchetype } as GameState;
+        const achResult = checkAchievements(postEvolveState);
+        const newAchievements = achResult.newOnes.length > 0
+          ? [...(s.newAchievements || []), ...achResult.newOnes]
+          : s.newAchievements;
+
         set({
           stageIndex: nextStageIdx,
           resources,
@@ -438,6 +467,8 @@ export const useGameStore = create<GameStore>()(
           activeStoryPopup: storyId?.id || s.activeStoryPopup,
           stageClearCounts,
           lockedArchetype,
+          achievements: achResult.earned,
+          newAchievements,
         });
         get().addToLog(`Evolved to ${nextStageDef.name}. ${nextStageDef.tagline}`);
       },
@@ -468,8 +499,7 @@ export const useGameStore = create<GameStore>()(
         ]));
 
         const fresh = initialRunState();
-        set({
-          ...fresh,
+        const metaState: Partial<GameState> = {
           evolutionPoints: s.evolutionPoints + epEarned,
           totalRuns: s.totalRuns + 1,
           galacticWins: s.galacticWins + (s.stageIndex >= 6 ? 1 : 0),
@@ -480,6 +510,21 @@ export const useGameStore = create<GameStore>()(
           storyAcknowledged: s.storyAcknowledged,
           unlockedLayers: s.unlockedLayers,
           stageClearCounts: s.stageClearCounts,
+          achievements: s.achievements,
+          newAchievements: s.newAchievements,
+        };
+
+        // Check achievements after prestige
+        const postState = { ...s, ...metaState } as GameState;
+        const achResult = checkAchievements(postState);
+        metaState.achievements = achResult.earned;
+        if (achResult.newOnes.length > 0) {
+          metaState.newAchievements = [...(s.newAchievements || []), ...achResult.newOnes];
+        }
+
+        set({
+          ...fresh,
+          ...metaState,
           currentTab: "actions",
           speed: 1,
           paused: false,
@@ -503,6 +548,51 @@ export const useGameStore = create<GameStore>()(
         const s = get();
         const ack = { ...s.storyAcknowledged, [id]: true };
         set({ activeStoryPopup: null, storyAcknowledged: ack });
+      },
+
+      dismissAchievementToast: () => {
+        set({ newAchievements: [] });
+      },
+
+      applyOfflineProgress: () => {
+        const s = get();
+        if (!s.lastSaved) return null;
+        const elapsedSec = Math.floor((Date.now() - s.lastSaved) / 1000);
+        // Only apply if away for more than 30 seconds
+        if (elapsedSec < 30) return null;
+        // Cap: base 24h, +24h per temporal_reserves tier
+        const tempReservesLvl = s.upgrades["temporal_reserves"] || 0;
+        const maxBank = 86400 + tempReservesLvl * 86400;
+        const appliedDt = Math.min(elapsedSec, maxBank);
+        if (appliedDt < 30) return null;
+
+        // Snapshot resources before to compute gains
+        const before = { ...s.resources };
+
+        // Apply tick at compressed speed (cap at 86400 per call to avoid huge loops)
+        // We simulate in chunks of 3600s (1 hour) to stay performant
+        const chunkSize = 3600;
+        let remaining = appliedDt;
+        // Temporarily set speed to 1 and call tick with large dt
+        while (remaining > 0) {
+          const chunk = Math.min(chunkSize, remaining);
+          get().tick(chunk);
+          remaining -= chunk;
+          // Re-read state in case it changed
+          const cur = get();
+          if (cur.paused) break;
+        }
+
+        const after = get();
+        const resourcesGained: Record<string, number> = {};
+        for (const r of Object.keys(after.resources)) {
+          const gain = (after.resources[r] || 0) - (before[r] || 0);
+          if (Math.abs(gain) > 0.01) resourcesGained[r] = gain;
+        }
+
+        get().addToLog(`Offline progress: simulated ${Math.floor(appliedDt / 60)}m ${Math.floor(appliedDt % 60)}s away.`);
+
+        return { elapsed: appliedDt, resourcesGained, applied: true };
       },
 
       addToLog: (msg) => {
@@ -562,17 +652,20 @@ export const useGameStore = create<GameStore>()(
       migrate: (persisted: any, version: number) => {
         if (!persisted) return persisted;
         if (version < 2) {
-          // Add new fields with defaults
           if (!persisted.systemEnabled) persisted.systemEnabled = {};
           if (!persisted.archetypeAffinity) persisted.archetypeAffinity = {};
           if (persisted.lockedArchetype === undefined) persisted.lockedArchetype = null;
           if (persisted.populationProgress === undefined) persisted.populationProgress = 0;
-          // Ensure new upgrades exist
+          if (!persisted.achievements) persisted.achievements = {};
+          if (!persisted.newAchievements) persisted.newAchievements = [];
           if (persisted.upgrades) {
             if (persisted.upgrades.auto_balancer === undefined) persisted.upgrades.auto_balancer = 0;
             if (persisted.upgrades.archetype_insight === undefined) persisted.upgrades.archetype_insight = 0;
           }
         }
+        // Always ensure achievements fields exist (even on v2)
+        if (!persisted.achievements) persisted.achievements = {};
+        if (!persisted.newAchievements) persisted.newAchievements = [];
         return persisted;
       },
     }
@@ -591,7 +684,41 @@ function techMultiplier(s: GameState, target: "production" | "manual" | "capacit
       mult += tech.multiplier.value;
     }
   }
+  // Achievement production bonus
+  const ctx = buildAchievementCtx(s);
+  mult += achievementBonus(s.achievements || {}, ctx, "production");
   return mult;
+}
+
+function buildAchievementCtx(s: GameState): AchievementCheckCtx {
+  const systemsDiscoveredCount = Object.keys(s.ownedSystems).filter((id) => (s.ownedSystems[id] || 0) > 0).length;
+  const techResearchedCount = Object.keys(s.technologies).filter((id) => s.technologies[id]).length;
+  const upgradesOwnedCount = Object.values(s.upgrades).filter((c) => c > 0).length;
+  const storyUnlockedCount = Object.keys(s.storyUnlocked).filter((id) => s.storyUnlocked[id]).length;
+  return {
+    galacticWins: s.galacticWins,
+    totalRuns: s.totalRuns,
+    stageClearCounts: s.stageClearCounts,
+    archivedArchetypes: s.archivedArchetypes || [],
+    storyUnlockedCount,
+    systemsDiscoveredCount,
+    techResearchedCount,
+    upgradesOwnedCount,
+  };
+}
+
+// Check all achievements; return new ones earned
+function checkAchievements(s: GameState): { earned: Record<string, boolean>; newOnes: string[] } {
+  const ctx = buildAchievementCtx(s);
+  const earned = { ...(s.achievements || {}) };
+  const newOnes: string[] = [];
+  for (const ach of ACHIEVEMENTS) {
+    if (!earned[ach.id] && ach.check(ctx)) {
+      earned[ach.id] = true;
+      newOnes.push(ach.id);
+    }
+  }
+  return { earned, newOnes };
 }
 
 function computeScore(s: GameState): number {

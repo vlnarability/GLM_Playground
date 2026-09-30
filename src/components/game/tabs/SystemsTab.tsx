@@ -10,7 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { ARCHETYPE_MAP } from "@/game/data/archetypes";
 import { useState } from "react";
-import { Plus, Minus, Lock, Power, PowerOff, AlertCircle } from "lucide-react";
+import { Lock, Power, PowerOff, AlertCircle } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 export function SystemsTab() {
@@ -122,11 +122,22 @@ function SystemCard({ sys, owned, cost, canAfford, atMax, techLocked, requiredTe
   const archDef = sys.grantsAffinity ? ARCHETYPE_MAP[sys.grantsAffinity.archetype] : null;
 
   return (
-    <Card className={cn("glass-panel relative overflow-hidden", !enabled && owned > 0 && "opacity-60")}>
+    <Card className={cn(
+      "glass-panel relative overflow-hidden",
+      !enabled && owned > 0 && "opacity-60",
+      techLocked && "border-red-500/40"
+    )}>
       <div
         className="absolute top-0 left-0 right-0 h-0.5"
-        style={{ background: capped ? "#f59e0b" : "linear-gradient(90deg, var(--primary) 0%, transparent 100%)" }}
+        style={{ background: capped ? "#f59e0b" : techLocked ? "#ef4444" : "linear-gradient(90deg, var(--primary) 0%, transparent 100%)" }}
       />
+      {/* Tech-locked overlay badge */}
+      {techLocked && (
+        <div className="absolute top-2 right-2 z-10 flex items-center gap-1 text-[0.6rem] px-1.5 py-0.5 rounded bg-red-500/20 border border-red-500/40 text-red-400 font-semibold uppercase tracking-wide">
+          <Lock className="w-2.5 h-2.5" />
+          Locked
+        </div>
+      )}
       <CardHeader className="pb-2">
         <div className="flex items-start justify-between gap-2">
           <div className="flex items-start gap-2 min-w-0">
@@ -232,18 +243,40 @@ function SystemCard({ sys, owned, cost, canAfford, atMax, techLocked, requiredTe
           </div>
         </div>
 
-        {/* Buy buttons */}
-        <div className="flex items-center gap-1 pt-1">
-          <Button size="sm" variant="outline" className="h-7 w-7 p-0" onClick={() => setQty(Math.max(1, qty - 1))}>
-            <Minus className="w-3 h-3" />
-          </Button>
-          <span className="text-xs w-8 text-center tabular-nums">×{qty}</span>
-          <Button size="sm" variant="outline" className="h-7 w-7 p-0" onClick={() => setQty(Math.min(100, qty + 1))}>
-            <Plus className="w-3 h-3" />
-          </Button>
+        {/* Buy buttons — qty presets + main build button */}
+        <div className="pt-1 space-y-1.5">
+          {/* Qty preset chips */}
+          <div className="flex items-center gap-1">
+            {[1, 10, 100].map((preset) => (
+              <button
+                key={preset}
+                onClick={() => setQty(preset)}
+                className={cn(
+                  "flex-1 text-xs py-1 rounded border transition-colors tabular-nums",
+                  qty === preset
+                    ? "border-primary bg-primary/15 text-primary font-semibold"
+                    : "border-border bg-muted/30 text-muted-foreground hover:text-foreground hover:border-foreground/40"
+                )}
+              >
+                ×{preset}
+              </button>
+            ))}
+            <button
+              onClick={() => setQty(100)}
+              className={cn(
+                "flex-1 text-xs py-1 rounded border transition-colors",
+                qty === 100
+                  ? "border-primary bg-primary/15 text-primary font-semibold"
+                  : "border-border bg-muted/30 text-muted-foreground hover:text-foreground hover:border-foreground/40"
+                )}
+              title="Buy as many as affordable up to 100"
+            >
+              Max
+            </button>
+          </div>
           <Button
             size="sm"
-            className="h-7 ml-auto flex-1"
+            className="h-8 w-full"
             disabled={!canAfford || atMax || techLocked}
             onClick={() => onBuy(qty)}
           >

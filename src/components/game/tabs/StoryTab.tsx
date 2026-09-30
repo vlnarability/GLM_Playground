@@ -12,7 +12,14 @@ export function StoryTab() {
   const stageIndex = useGameStore((s) => s.stageIndex);
   const currentStage = STAGES[stageIndex];
 
-  const entries = STORY_ENTRIES.slice().reverse(); // newest first
+  // Sort: unlocked entries first (in chronological order), then locked entries by stage order
+  const entries = STORY_ENTRIES.slice().sort((a, b) => {
+    const aUnlocked = !!storyUnlocked[a.id];
+    const bUnlocked = !!storyUnlocked[b.id];
+    if (aUnlocked !== bUnlocked) return aUnlocked ? -1 : 1;
+    // Within the same unlock status, preserve original chronological order
+    return STORY_ENTRIES.indexOf(a) - STORY_ENTRIES.indexOf(b);
+  });
 
   const unlockedCount = entries.filter((e) => storyUnlocked[e.id]).length;
   const totalCount = entries.length;

@@ -10,6 +10,7 @@ import {
   FlaskConical,
   BookOpen,
   ScrollText,
+  Trophy,
   Archive as ArchiveIcon,
   ListTree,
   Store,
@@ -22,6 +23,7 @@ const TABS: { id: TabId; label: string; icon: React.ReactNode; mobile?: boolean 
   { id: "tech", label: "Tech", icon: <FlaskConical className="w-4 h-4" /> },
   { id: "story", label: "Story", icon: <BookOpen className="w-4 h-4" /> },
   { id: "codex", label: "Codex", icon: <ScrollText className="w-4 h-4" /> },
+  { id: "achievements", label: "Awards", icon: <Trophy className="w-4 h-4" /> },
   { id: "archive", label: "Archive", icon: <ArchiveIcon className="w-4 h-4" /> },
   { id: "log", label: "Log", icon: <ListTree className="w-4 h-4" /> },
 ];

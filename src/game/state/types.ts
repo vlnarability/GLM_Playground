@@ -12,7 +12,7 @@ export type StageId =
 
 export type TabId =
   | "actions" | "systems" | "production" | "tech" | "story"
-  | "codex" | "archive" | "log" | "shop";
+  | "codex" | "achievements" | "archive" | "log" | "shop";
 
 export interface ResourceDef {
   id: ResourceId;
@@ -147,6 +147,8 @@ export interface GameState {
   archive: ArchiveEntry[];
   archivedArchetypes: string[];
   unlockedLayers: Record<string, boolean>;
+  achievements: Record<string, boolean>; // earned achievements
+  newAchievements: string[]; // queue of newly-earned achievement IDs for toast
 
   // UI state
   currentTab: TabId;
@@ -180,6 +182,8 @@ export interface GameStore extends GameState {
   setShowShop: (v: boolean) => void;
   setShowEvolve: (v: boolean) => void;
   dismissStory: (id: string) => void;
+  dismissAchievementToast: () => void;
+  applyOfflineProgress: () => { elapsed: number; resourcesGained: Record<string, number>; applied: boolean } | null;
   hardReset: () => void;
   saveGame: () => void;
   loadGame: () => void;

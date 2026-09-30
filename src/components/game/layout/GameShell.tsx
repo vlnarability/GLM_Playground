@@ -13,14 +13,17 @@ import { ProductionTab } from "../tabs/ProductionTab";
 import { TechTab } from "../tabs/TechTab";
 import { StoryTab } from "../tabs/StoryTab";
 import { CodexTab } from "../tabs/CodexTab";
+import { AchievementsTab } from "../tabs/AchievementsTab";
 import { ArchiveTab } from "../tabs/ArchiveTab";
 import { LogTab } from "../tabs/LogTab";
 import { ShopModal } from "../modals/ShopModal";
 import { EvolveModal } from "../modals/EvolveModal";
 import { StoryPopup } from "../modals/StoryPopup";
+import { AchievementToast } from "../modals/AchievementToast";
+import { OfflineSummary } from "../modals/OfflineSummary";
 
 export function GameShell() {
-  useGameLoop();
+  const { offlineSummary, dismissOffline } = useGameLoop();
   const currentTab = useGameStore((s) => s.currentTab);
   const stageIndex = useGameStore((s) => s.stageIndex);
   const stage = STAGES[stageIndex];
@@ -53,6 +56,7 @@ export function GameShell() {
               {currentTab === "tech" && <TechTab />}
               {currentTab === "story" && <StoryTab />}
               {currentTab === "codex" && <CodexTab />}
+              {currentTab === "achievements" && <AchievementsTab />}
               {currentTab === "archive" && <ArchiveTab />}
               {currentTab === "log" && <LogTab />}
             </div>
@@ -64,6 +68,14 @@ export function GameShell() {
       <ShopModal />
       <EvolveModal />
       <StoryPopup />
+      <AchievementToast />
+      {offlineSummary && (
+        <OfflineSummary
+          elapsed={offlineSummary.elapsed}
+          resourcesGained={offlineSummary.resourcesGained}
+          onClose={dismissOffline}
+        />
+      )}
     </div>
   );
 }
