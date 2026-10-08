@@ -484,6 +484,88 @@
 }
 
 /* ============================================================
+   FEATURE ENHANCEMENTS — layer-specific visual effects
+   Subtle (300–500ms) one-shot animations keyed off React state.
+   ============================================================ */
+
+/* FEATURE 2 — Supernova flash: brief bright burst on illuminated nodes */
+@keyframes supernova-flash {
+  0%   { box-shadow: 0 0 0px 0 rgba(251, 191, 36, 0.95); filter: brightness(1); }
+  35%  { box-shadow: 0 0 22px 4px rgba(251, 191, 36, 0.95); filter: brightness(2.2); }
+  100% { box-shadow: 0 0 0px 0 rgba(251, 191, 36, 0); filter: brightness(1); }
+}
+.supernova-flash {
+  animation: supernova-flash 450ms ease-out;
+}
+
+/* FEATURE 2 — Black Hole collapse: scale & fade into a dark point */
+@keyframes black-hole-collapse {
+  0%   { transform: scale(1); opacity: 1; filter: brightness(1); }
+  40%  { transform: scale(0.6) rotate(8deg); opacity: 0.8; filter: brightness(0.4) blur(1px); }
+  100% { transform: scale(0.05) rotate(180deg); opacity: 0; filter: brightness(0) blur(3px); }
+}
+.black-hole-collapse {
+  animation: black-hole-collapse 500ms ease-in forwards;
+}
+
+/* FEATURE 4 — Disaster flash: brief red shake on the destroyed tile */
+@keyframes disaster-flash {
+  0%   { background-color: rgba(220, 38, 38, 0); transform: translate(0, 0); }
+  20%  { background-color: rgba(220, 38, 38, 0.6); transform: translate(-2px, 1px); }
+  40%  { background-color: rgba(220, 38, 38, 0.85); transform: translate(2px, -1px); }
+  60%  { background-color: rgba(220, 38, 38, 0.6); transform: translate(-1px, 2px); }
+  100% { background-color: rgba(220, 38, 38, 0); transform: translate(0, 0); }
+}
+.disaster-flash {
+  animation: disaster-flash 400ms ease-out;
+}
+
+/* FEATURE 5 — Prophet golden glow: subtle pulsing aura on prophet cells */
+@keyframes prophet-glow {
+  0%, 100% { box-shadow: 0 0 4px 0 rgba(250, 204, 21, 0.6); }
+  50%      { box-shadow: 0 0 10px 2px rgba(250, 204, 21, 0.95); }
+}
+.prophet-glow {
+  animation: prophet-glow 1.8s ease-in-out infinite;
+}
+
+/* FEATURE 7 — Mutation purple aura: subtle pulsing violet ring */
+@keyframes mutation-aura {
+  0%, 100% { box-shadow: 0 0 3px 0 rgba(168, 85, 247, 0.5); }
+  50%      { box-shadow: 0 0 9px 2px rgba(168, 85, 247, 0.9); }
+}
+.mutation-aura {
+  animation: mutation-aura 2s ease-in-out infinite;
+}
+
+/* FEATURE 8 — Amplifier glow: pulsing connector line between gods */
+@keyframes amplifier-pulse {
+  0%, 100% { box-shadow: 0 0 4px 0 rgba(56, 189, 248, 0.4); opacity: 0.8; }
+  50%      { box-shadow: 0 0 10px 2px rgba(56, 189, 248, 0.95); opacity: 1; }
+}
+.amplifier-pulse {
+  animation: amplifier-pulse 1.5s ease-in-out infinite;
+}
+
+/* FEATURE 9 — Temporal Storm overlay: blue/purple shimmer over battle card */
+@keyframes temporal-storm-overlay {
+  0%, 100% { background: radial-gradient(circle at 30% 30%, rgba(99, 102, 241, 0.18), transparent 60%); }
+  50%      { background: radial-gradient(circle at 70% 70%, rgba(168, 85, 247, 0.25), transparent 60%); }
+}
+.temporal-storm-overlay {
+  animation: temporal-storm-overlay 2.2s ease-in-out infinite;
+}
+
+/* FEATURE 10 — Forbidden option pulse: red warning border */
+@keyframes forbidden-pulse {
+  0%, 100% { border-color: rgba(220, 38, 38, 0.5); }
+  50%      { border-color: rgba(220, 38, 38, 1); }
+}
+.forbidden-pulse {
+  animation: forbidden-pulse 1.4s ease-in-out infinite;
+}
+
+/* ============================================================
    STICKY FOOTER (mobile)
    ============================================================ */
 

@@ -21,7 +21,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } f
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
-import { Lock, Dna, CheckCircle2, AlertTriangle, Trash2, Plus } from "lucide-react";
+import { Lock, Dna, CheckCircle2, AlertTriangle, Trash2, Plus, Sparkles } from "lucide-react";
 
 export function OmnipotenceModal() {
   const show = useGameStore((s) => s.showOmnipotence);
@@ -139,6 +139,13 @@ export function OmnipotenceModal() {
             <section className="stat-card">
               <div className="text-[0.7rem] uppercase tracking-wide text-emerald-300/80 mb-2 flex items-center gap-1">
                 <Dna className="w-3 h-3" /> Creation Lab — Design a creature
+                {/* FEATURE 7 — Mutation hint */}
+                <Badge variant="outline" className="ml-2 text-[0.55rem] text-violet-300 border-violet-400/40">
+                  <Sparkles className="w-2.5 h-2.5 mr-0.5" /> 10% mutation chance
+                </Badge>
+              </div>
+              <div className="text-[0.6rem] text-violet-300/80 mb-2">
+                FEATURE 7 — Each creature has a 10% chance to mutate on creation. Mutated creatures are 50% more powerful but add +20% to genetic instability.
               </div>
               <div className="space-y-2">
                 <DesignPicker
@@ -198,11 +205,20 @@ export function OmnipotenceModal() {
                   {creatures.map((c) => {
                     const body = CREATURE_BODY_TYPE_MAP[c.bodyType];
                     const inLegion = legions.find((l) => l.creatureIds.includes(c.id));
+                    // FEATURE 7 — Mutation visual (purple aura)
+                    const mutated = !!c.mutated;
                     return (
-                      <div key={c.id} className={`stat-card flex items-center gap-2 py-1.5 ${inLegion ? "border-amber-400/40" : ""}`}>
+                      <div key={c.id} className={`stat-card flex items-center gap-2 py-1.5 ${inLegion ? "border-amber-400/40" : ""} ${mutated ? "mutation-aura border-violet-400/60" : ""}`}>
                         <span className="text-xl shrink-0">{body.icon}</span>
                         <div className="min-w-0 flex-1">
-                          <div className="text-xs font-semibold truncate">{c.name}</div>
+                          <div className="flex items-center gap-1 flex-wrap">
+                            <span className="text-xs font-semibold truncate">{c.name}</span>
+                            {mutated && (
+                              <Badge variant="outline" className="text-[0.5rem] bg-violet-500/20 text-violet-200 border-violet-400/60">
+                                <Sparkles className="w-2.5 h-2.5 mr-0.5" /> MUTATED ({c.mutatedStat})
+                              </Badge>
+                            )}
+                          </div>
                           <div className="text-[0.6rem] text-muted-foreground">
                             {body.name} · ATK {c.attack} / DEF {c.defense} / SPD {c.speed}
                           </div>

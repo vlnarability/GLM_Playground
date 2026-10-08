@@ -57,6 +57,10 @@ export function TranscendenceModal() {
   const marketBuy = useGameStore((s) => s.marketBuyResource);
   const marketSell = useGameStore((s) => s.marketSellResource);
   const marketOffering = useGameStore((s) => s.marketOffering);
+  // FEATURE 3 — Market Crashes
+  const marketCrashActive = useGameStore((s) => !!s.marketCrashActive);
+  const marketCrashDuration = useGameStore((s) => s.marketCrashDuration || 0);
+  const marketCrashTimer = useGameStore((s) => s.marketCrashTimer || 0);
 
   const isUnlocked = !!unlockedLayers.transcendence;
   const pactsUsedCount = BLOOD_PACTS.filter((p) => bloodPactsUsed[p.id]).length;
@@ -120,6 +124,22 @@ export function TranscendenceModal() {
           </div>
         ) : (
           <div className="space-y-4">
+            {/* FEATURE 3 — Market Crash banner */}
+            {marketCrashActive ? (
+              <div className="rounded-md border border-rose-400/70 bg-rose-500/20 p-2 text-[0.75rem] text-rose-200 flex items-center gap-2 animate-pulse">
+                <span className="text-base">⚠</span>
+                <span className="font-semibold flex-1">MARKET CRASH! All prices dropped to 30% of base — buy now to profit on recovery.</span>
+                <Badge variant="outline" className="text-[0.6rem] text-rose-200 border-rose-400/60">
+                  {Math.ceil(marketCrashDuration)}s remaining
+                </Badge>
+              </div>
+            ) : (
+              <div className="rounded-md border border-muted-foreground/20 bg-muted/10 p-1.5 text-[0.65rem] text-muted-foreground flex items-center gap-2">
+                <span className="text-base">📊</span>
+                <span className="flex-1">Next market crash check in <span className="font-mono text-amber-300">{Math.ceil(marketCrashTimer)}s</span> (20% chance).</span>
+              </div>
+            )}
+
             {/* Divine Market — the new mini-game */}
             <section className="stat-card">
               <div className="flex items-center justify-between mb-2">

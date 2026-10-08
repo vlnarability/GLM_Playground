@@ -165,6 +165,7 @@ export function makeDefaultRealmState(realmId: string): Record<string, any> {
         happinessBelowThreshold: false,
         goldReached: false,
         completed: false,
+        startedAt: 0,
       };
     case "realm_swiftness":
       return {

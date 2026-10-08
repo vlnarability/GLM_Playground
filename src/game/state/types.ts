@@ -338,6 +338,7 @@ export interface GameState {
   activeTrialRealm: string | null;              // currently open realm id
   trialRealmState: Record<string, any>;        // per-realm runtime state
   trialRealmsCompleted: Record<string, boolean>;
+  trialRealmBestTimes: Record<string, number>; // realmId → best completion time (seconds) — LOCAL leaderboard (no login)
   // Layer 2 — Constellation Map (visual foresight grid)
   constellationNodes: Record<string, boolean>; // node id → illuminated
   constellationRevealed: Record<string, boolean>; // connections revealed by Stargaze
@@ -346,12 +347,23 @@ export interface GameState {
   priceHistory: Record<string, number[]>;     // resource id → last N prices (sparkline)
   marketOwnedResources: Record<string, number>; // resource id → units owned
   marketTickTimer: number;                     // seconds until next price tick
+  // FEATURE 3 — Market Crashes
+  marketCrashTimer: number;                    // seconds until next crash check
+  marketCrashActive: boolean;
+  marketCrashDuration: number;                 // seconds remaining of crash
   // Layer 4 — Sacred Grid (tile placement)
   worldGrid: Array<string | null>;             // 20 cells (5×4); tile type id or null
   worldGridSeeds: Array<string | null>;        // hidden dormant seeds revealed on adjacency
+  // FEATURE 4 — Natural Disasters
+  disasterTimer: number;                       // seconds until next disaster roll
+  lastDisasterCell: number | null;             // last affected cell (for visual flash)
+  lastDisasterAt: number;                      // game-time of last disaster
   // Layer 5 — Heresy Web (containment grid)
   followerGrid: Array<{ state: string; type: string }>; // 32 cells (8×4): "faithful"|"heretical"|"empty"; type id
   heresySpreadTimer: number;                   // seconds until next spread tick
+  // FEATURE 5 — Prophets (place on heresy grid; convert adjacent heretics every 10s)
+  prophets: Array<{ cellIndex: number; lastConvertedAt: number }>;
+  prophetConvertTimer: number;                  // seconds until next prophet conversion tick
   // Layer 6 — Dimension Engine (parallel dimensions)
   dimensions: Array<{
     id: number;
@@ -363,6 +375,16 @@ export interface GameState {
     reachedGalactic: boolean;
   }>;
   dimensionRiftTimer: number;                  // seconds until next rift event
+
+  // ===== FEATURE ENHANCEMENTS (L7–L10) =====
+  // FEATURE 7 — Mutations: creatures can mutate on creation (50% stronger, +20% instability)
+  // Mutated flag stored on the creature itself (see omnipotence.ts Creature interface)
+  // FEATURE 8 — Amplifiers: divine network nodes that double Negotiate gains
+  amplifiers: Array<{ id: number; godId: string }>;
+  // FEATURE 9 — Temporal Storms (per-battle): shuffle timeline, delays/accelerates enemy attacks
+  temporalStorms: Record<string, boolean>;     // oldGodId → storm active
+  // FEATURE 10 — Forbidden Words: paradox counter; ≥3 resets universe creation
+  universeParadox: number;
 }
 
 export interface GameStore extends GameState {
@@ -512,4 +534,18 @@ export interface GameStore extends GameState {
   setDimensionSpeed: (dimId: number, speed: number) => void;
   syncDimension: (fromId: number, toId: number) => void;
   initDimensions: () => void;
+  // FEATURE 6 — Collapse two dimensions of the same stage into one (combined speed + resources)
+  collapseDimensions: (fromId: number, toId: number) => void;
+
+  // ===== FEATURE ENHANCEMENTS =====
+  // FEATURE 5 — Prophets
+  placeProphet: (cellIndex: number) => void;
+  removeProphet: (cellIndex: number) => void;
+  // FEATURE 8 — Amplifiers
+  placeAmplifier: (godId: string) => void;
+  removeAmplifier: (godId: string) => void;
+  // FEATURE 9 — Temporal Storms
+  stabilizeTime: (oldGodId: string) => void;
+  // FEATURE 10 — Forbidden Words
+  resolveParadox: () => void;
 }

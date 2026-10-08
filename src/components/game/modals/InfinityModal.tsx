@@ -13,7 +13,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } f
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
-import { Lock, Swords, CheckCircle2, Crosshair, Users } from "lucide-react";
+import { Lock, Swords, CheckCircle2, Crosshair, Users, Clock, Sparkles } from "lucide-react";
 
 const PHASE_LABELS: Record<string, string> = {
   skirmish: "Skirmish",
@@ -36,6 +36,9 @@ export function InfinityModal() {
   const deployLegionToBattle = useGameStore((s) => s.deployLegionToBattle);
   const callAllyToBattle = useGameStore((s) => s.callAllyToBattle);
   const attackOldGod = useGameStore((s) => s.attackOldGod);
+  // FEATURE 9 — Temporal Storms
+  const temporalStorms = useGameStore((s) => s.temporalStorms || {});
+  const stabilizeTime = useGameStore((s) => s.stabilizeTime);
 
   const isUnlocked = !!unlockedLayers.infinity;
   const fragmentBonus = divineFragmentBonus(divineFragments);
@@ -92,9 +95,15 @@ export function InfinityModal() {
                   const isWon = battle.status === "won";
                   const isActive = battle.status === "in_progress";
                   const hpPct = (battle.bossHp / battle.bossMaxHp) * 100;
+                  // FEATURE 9 — Temporal Storm active for this battle
+                  const stormActive = !!temporalStorms[god.id];
                   return (
-                    <div key={god.id} className={`stat-card p-2 ${isWon ? "border-emerald-400/40 bg-emerald-500/5" : isActive ? "border-rose-400/40" : ""}`}>
-                      <div className="flex items-start gap-2">
+                    <div key={god.id} className={`stat-card p-2 ${isWon ? "border-emerald-400/40 bg-emerald-500/5" : isActive ? "border-rose-400/40" : ""} ${stormActive ? "relative overflow-hidden" : ""}`}>
+                      {/* FEATURE 9 — Temporal Storm blue/purple overlay */}
+                      {stormActive && (
+                        <div className="absolute inset-0 pointer-events-none temporal-storm-overlay rounded-md" />
+                      )}
+                      <div className="flex items-start gap-2 relative">
                         <span className="text-2xl shrink-0">{god.icon}</span>
                         <div className="min-w-0 flex-1">
                           <div className="flex items-center gap-1.5 flex-wrap">
@@ -110,11 +119,35 @@ export function InfinityModal() {
                                 Phase: {PHASE_LABELS[battle.phase] || battle.phase}
                               </Badge>
                             )}
+                            {/* FEATURE 9 — Temporal Storm badge */}
+                            {stormActive && (
+                              <Badge variant="outline" className="text-[0.55rem] text-violet-200 border-violet-400/60 animate-pulse">
+                                <Clock className="w-2.5 h-2.5 mr-0.5" /> Temporal Storm
+                              </Badge>
+                            )}
                           </div>
                           <div className="text-[0.6rem] text-muted-foreground leading-snug mt-0.5">{god.desc}</div>
                           <div className="text-[0.55rem] text-amber-300/80 mt-0.5">
                             HP {god.hp} · ATK {god.attack} · Weakness: {god.weakness}
                           </div>
+
+                          {/* FEATURE 9 — Temporal Storm banner */}
+                          {stormActive && (
+                            <div className="rounded-md border border-violet-400/60 bg-violet-500/15 p-1.5 mt-1.5 text-[0.6rem] text-violet-100 flex items-center gap-1">
+                              <Sparkles className="w-3 h-3 shrink-0" />
+                              <span className="flex-1">🌀 The timeline shudders — enemy strikes may be delayed or accelerated.</span>
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                className="h-5 text-[0.55rem] text-cyan-200 border-cyan-400/50"
+                                disabled={divineFragments < 1}
+                                onClick={() => stabilizeTime(god.id)}
+                                title="Stabilize Time (costs 1 Divine Fragment)"
+                              >
+                                ⏳ Stabilize (1 Fragment)
+                              </Button>
+                            </div>
+                          )}
 
                           {/* HP bar */}
                           {(isActive || isWon) && (

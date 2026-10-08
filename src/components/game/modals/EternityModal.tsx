@@ -14,7 +14,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } f
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
-import { Lock, Sparkles, CheckCircle2, Star, RefreshCw } from "lucide-react";
+import { Lock, Sparkles, CheckCircle2, Star, RefreshCw, AlertTriangle } from "lucide-react";
 
 export function EternityModal() {
   const show = useGameStore((s) => s.showEternity);
@@ -29,6 +29,10 @@ export function EternityModal() {
   const setUniverseRule = useGameStore((s) => s.setUniverseRule);
   const toggleKeptGod = useGameStore((s) => s.toggleKeptGod);
   const chooseEnding = useGameStore((s) => s.chooseEnding);
+  // FEATURE 10 — Forbidden Words (paradox tracking + resolve action)
+  const universeParadox = useGameStore((s) => s.universeParadox || 0);
+  const divinity = useGameStore((s) => s.divinity || 0);
+  const resolveParadox = useGameStore((s) => s.resolveParadox);
 
   const isUnlocked = !!unlockedLayers.eternity;
   const universeB = universeSlotBonus(universeRules);
@@ -78,19 +82,49 @@ export function EternityModal() {
 
             {/* Universe Creation Slots */}
             <section>
-              <div className="text-[0.7rem] uppercase tracking-wide text-muted-foreground mb-1 flex items-center gap-1">
-                <Sparkles className="w-3 h-3" /> Universe Creation — define the rules of your new cosmos
+              <div className="text-[0.7rem] uppercase tracking-wide text-muted-foreground mb-1 flex items-center gap-1 justify-between">
+                <span className="flex items-center gap-1">
+                  <Sparkles className="w-3 h-3" /> Universe Creation — define the rules of your new cosmos
+                </span>
+                {/* FEATURE 10 — Paradox counter + Resolve button */}
+                <div className="flex items-center gap-1">
+                  <Badge variant="outline" className={`text-[0.6rem] ${universeParadox >= 2 ? "text-rose-400 border-rose-400/60 animate-pulse" : universeParadox > 0 ? "text-rose-300 border-rose-400/40" : "text-muted-foreground"}`}>
+                    <AlertTriangle className="w-2.5 h-2.5 mr-0.5" /> Paradox: {universeParadox}/3
+                  </Badge>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="h-5 text-[0.55rem] text-amber-300 border-amber-400/40"
+                    disabled={universeParadox <= 0 || divinity < 100}
+                    onClick={() => resolveParadox()}
+                    title="Resolve Paradox (costs 100 Divinity, reduces paradox by 1)"
+                  >
+                    ✦ Resolve (100 Div)
+                  </Button>
+                </div>
               </div>
+              {/* FEATURE 10 — Paradox warning */}
+              {universeParadox >= 2 && (
+                <div className="rounded-md border border-rose-400/60 bg-rose-500/15 p-1.5 text-[0.65rem] text-rose-200 mb-2 flex items-center gap-1">
+                  <AlertTriangle className="w-3 h-3 shrink-0" />
+                  <span className="flex-1">⚠ PARADOX OVERLOAD imminent — at 3, the universe creation fails and all rules reset. Resolve a paradox or avoid Forbidden options.</span>
+                </div>
+              )}
               <div className="space-y-2">
                 {UNIVERSE_SLOTS.map((slot, idx) => {
                   const chosenId = universeRules[idx];
                   const chosen = slot.options.find((o) => o.id === chosenId);
                   return (
-                    <div key={slot.id} className={`stat-card p-2 ${chosen ? "border-emerald-400/40" : ""}`}>
+                    <div key={slot.id} className={`stat-card p-2 ${chosen ? (chosen.forbidden ? "border-rose-400/50" : "border-emerald-400/40") : ""}`}>
                       <div className="flex items-center gap-2 mb-1">
                         <span className="text-lg">{slot.icon}</span>
                         <span className="text-xs font-semibold">{slot.name}</span>
-                        {chosen && <CheckCircle2 className="w-2.5 h-2.5 text-emerald-400 ml-auto" />}
+                        {chosen && !chosen.forbidden && <CheckCircle2 className="w-2.5 h-2.5 text-emerald-400 ml-auto" />}
+                        {chosen?.forbidden && (
+                          <Badge variant="outline" className="ml-auto text-[0.55rem] text-rose-300 border-rose-400/60">
+                            <AlertTriangle className="w-2.5 h-2.5 mr-0.5" /> Forbidden
+                          </Badge>
+                        )}
                       </div>
                       <div className="text-[0.6rem] text-muted-foreground mb-1.5">{slot.desc}</div>
                       <div className="grid grid-cols-2 gap-1">
@@ -100,9 +134,17 @@ export function EternityModal() {
                             <button
                               key={opt.id}
                               onClick={() => setUniverseRule(idx, opt.id)}
-                              className={`stat-card text-left p-1.5 ${selected ? "border-amber-400/60 bg-amber-500/10" : "hover:border-amber-400/40"}`}
+                              className={`stat-card text-left p-1.5
+                                ${selected
+                                  ? opt.forbidden
+                                    ? "border-rose-400/70 bg-rose-500/15 forbidden-pulse"
+                                    : "border-amber-400/60 bg-amber-500/10"
+                                  : opt.forbidden
+                                    ? "border-rose-400/40 bg-rose-500/5 hover:border-rose-400/70"
+                                    : "hover:border-amber-400/40"
+                                }`}
                             >
-                              <div className="text-[0.65rem] font-medium">{opt.label}</div>
+                              <div className={`text-[0.65rem] font-medium ${opt.forbidden ? "text-rose-200" : ""}`}>{opt.label}{opt.forbidden ? " ⚠" : ""}</div>
                               <div className="text-[0.55rem] text-muted-foreground mt-0.5 leading-tight">{opt.desc}</div>
                             </button>
                           );

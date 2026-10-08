@@ -51,6 +51,8 @@ export function ChallengeModal() {
   const activeTrialRealm = useGameStore((s) => s.activeTrialRealm);
   const trialRealmState = useGameStore((s) => s.trialRealmState || {});
   const trialRealmsCompleted = useGameStore((s) => s.trialRealmsCompleted || {});
+  const trialRealmBestTimes = useGameStore((s) => s.trialRealmBestTimes || {}); // FEATURE 1 — local leaderboard
+  const gameTime = useGameStore((s) => s.time); // FEATURE 1 — live timer tick
   const setActiveTrialRealm = useGameStore((s) => s.setActiveTrialRealm);
   const realmBreakthrough = useGameStore((s) => s.realmBreakthrough);
   const realmDiscontentAction = useGameStore((s) => s.realmDiscontentAction);
@@ -60,6 +62,17 @@ export function ChallengeModal() {
   const totalCompleted = Object.values(completedChallenges).filter((c) => c > 0).length;
   const totalRepeats = Object.values(completedChallenges).reduce((a, b) => a + (b || 0), 0);
   const realmsCompletedCount = Object.values(trialRealmsCompleted).filter(Boolean).length;
+
+  // FEATURE 1 — format best time as "Xm Ys"
+  function formatBestTime(seconds: number): string {
+    const m = Math.floor(seconds / 60);
+    const s = Math.floor(seconds % 60);
+    return `${m}m ${s}s`;
+  }
+  // Live timer for the currently active realm
+  const liveElapsed = activeTrialRealm
+    ? Math.max(0, gameTime - ((trialRealmState[activeTrialRealm]?.startedAt) || gameTime))
+    : 0;
 
   return (
     <Dialog open={showChallenges} onOpenChange={setShowChallenges}>
@@ -101,6 +114,7 @@ export function ChallengeModal() {
             onBreakthrough={realmBreakthrough}
             onDiscontentAction={realmDiscontentAction}
             stageIndex={stageIndex}
+            liveElapsed={liveElapsed}
           />
         ) : (
           <>
@@ -115,6 +129,7 @@ export function ChallengeModal() {
                   const isActive = activeTrialRealm === r.id;
                   const playable = PLAYABLE_REALM_IDS.includes(r.id);
                   const colorClass = REALM_COLOR_CLASSES[r.color] || REALM_COLOR_CLASSES.amber;
+                  const bestTime = trialRealmBestTimes[r.id]; // FEATURE 1 — local best time
                   return (
                     <button
                       key={r.id}
@@ -135,6 +150,18 @@ export function ChallengeModal() {
                             {completed && (
                               <Badge className="text-[0.55rem] bg-emerald-500/20 text-emerald-300 border-emerald-400/40">
                                 <Trophy className="w-2.5 h-2.5 mr-0.5" /> Done
+                              </Badge>
+                            )}
+                            {/* FEATURE 1 — local best-time leaderboard */}
+                            {bestTime !== undefined && (
+                              <Badge variant="outline" className="text-[0.55rem] text-amber-300 border-amber-400/40">
+                                <Clock className="w-2.5 h-2.5 mr-0.5" /> Best: {formatBestTime(bestTime)}
+                              </Badge>
+                            )}
+                            {/* FEATURE 1 — live timer for currently active realm */}
+                            {isActive && (
+                              <Badge variant="outline" className="text-[0.55rem] text-cyan-300 border-cyan-400/40 animate-pulse">
+                                <Hourglass className="w-2.5 h-2.5 mr-0.5" /> Time: {Math.floor(liveElapsed)}s
                               </Badge>
                             )}
                           </div>
@@ -257,6 +284,7 @@ function ActiveRealmView({
   onBreakthrough,
   onDiscontentAction,
   stageIndex,
+  liveElapsed = 0,
 }: {
   realmId: string;
   state: Record<string, any>;
@@ -264,6 +292,7 @@ function ActiveRealmView({
   onBreakthrough: () => void;
   onDiscontentAction: (action: "celebrate" | "tax" | "ignore") => void;
   stageIndex: number;
+  liveElapsed?: number; // FEATURE 1 — live timer
 }) {
   const realm = TRIAL_REALMS.find((r) => r.id === realmId);
   if (!realm) return null;
@@ -277,6 +306,10 @@ function ActiveRealmView({
             <div className="text-base font-semibold">{realm.name}</div>
             <div className="text-[0.65rem] text-muted-foreground">{realm.tagline}</div>
           </div>
+          {/* FEATURE 1 — live timer in the active realm header */}
+          <Badge variant="outline" className="ml-2 text-[0.6rem] text-cyan-300 border-cyan-400/40 animate-pulse">
+            <Hourglass className="w-2.5 h-2.5 mr-0.5" /> Time: {Math.floor(liveElapsed)}s
+          </Badge>
         </div>
         <Button size="sm" variant="outline" onClick={onClose}>Exit Realm</Button>
       </div>

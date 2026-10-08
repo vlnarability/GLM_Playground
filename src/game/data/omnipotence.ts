@@ -109,6 +109,9 @@ export interface Creature {
   defense: number;
   speed: number;
   createdAt: number;  // game-time of creation
+  // FEATURE 7 — Mutations: 10% chance on creation; mutated creatures are 50% stronger (+50% to all stats) and add +20% instability
+  mutated?: boolean;
+  mutatedStat?: "attack" | "defense" | "speed";
 }
 
 // ----- Legion (army of creatures) -----
@@ -178,7 +181,9 @@ export function creatureInstabilityPerSec(creature: Creature): number {
   const dietDef = CREATURE_DIET_MAP[creature.diet];
   // Psionic + void_eater combinations are most unstable
   const bodyMult = creature.bodyType === "psionic" ? 1.5 : 1;
-  return (0.02 + dietDef.instabilityBonus) * bodyMult;
+  // FEATURE 7 — Mutated creatures add +20% to instability
+  const mutationMult = creature.mutated ? 1.2 : 1;
+  return (0.02 + dietDef.instabilityBonus) * bodyMult * mutationMult;
 }
 
 /**

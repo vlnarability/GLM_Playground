@@ -16,7 +16,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } f
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
-import { Lock, Handshake, CheckCircle2, Sparkles } from "lucide-react";
+import { Lock, Handshake, CheckCircle2, Sparkles, Radio } from "lucide-react";
 import { formatNumber } from "../shared/format";
 
 const PERSONALITY_COLORS: Record<string, string> = {
@@ -48,6 +48,10 @@ export function DivinityLayerModal() {
   const negotiateWithGod = useGameStore((s) => s.negotiateWithGod);
   const tradeWithGod = useGameStore((s) => s.tradeWithGod);
   const formAlliance = useGameStore((s) => s.formAlliance);
+  // FEATURE 8 — Amplifiers
+  const amplifiers = useGameStore((s) => s.amplifiers || []);
+  const placeAmplifier = useGameStore((s) => s.placeAmplifier);
+  const removeAmplifier = useGameStore((s) => s.removeAmplifier);
 
   const isUnlocked = !!unlockedLayers.divinity;
   const bonus = allianceBonus(alliances, minorGods);
@@ -104,8 +108,17 @@ export function DivinityLayerModal() {
 
             {/* Relationship Web — minor god cards */}
             <section>
-              <div className="text-[0.7rem] uppercase tracking-wide text-muted-foreground mb-1 flex items-center gap-1">
-                <Sparkles className="w-3 h-3" /> Relationship Web — negotiate, trade, ally
+              <div className="text-[0.7rem] uppercase tracking-wide text-muted-foreground mb-1 flex items-center gap-1 justify-between">
+                <span className="flex items-center gap-1">
+                  <Sparkles className="w-3 h-3" /> Relationship Web — negotiate, trade, ally
+                </span>
+                {/* FEATURE 8 — Amplifier summary */}
+                <Badge variant="outline" className="text-[0.6rem] text-sky-300 border-sky-400/40">
+                  <Radio className="w-2.5 h-2.5 mr-0.5" /> {amplifiers.length}/3 amplifiers
+                </Badge>
+              </div>
+              <div className="text-[0.6rem] text-sky-300/80 mb-2">
+                FEATURE 8 — Place Amplifiers (30 Divinity each, max 3) on minor gods to double Negotiate gains with them.
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
                 {MINOR_GODS.map((g) => {
@@ -114,8 +127,10 @@ export function DivinityLayerModal() {
                   const canAlly = canFormAlliance(godRelationships, alliances, g.id);
                   const haveDemand = getResourceAmount(g.demand.resource);
                   const canTrade = haveDemand >= g.demand.amount;
+                  // FEATURE 8 — Amplifier check
+                  const hasAmplifier = amplifiers.some((a) => a.godId === g.id);
                   return (
-                    <div key={g.id} className={`stat-card p-2 ${allied ? "border-amber-400/60 bg-amber-500/5" : ""}`}>
+                    <div key={g.id} className={`stat-card p-2 ${allied ? "border-amber-400/60 bg-amber-500/5" : ""} ${hasAmplifier ? "amplifier-pulse ring-1 ring-sky-400/50" : ""}`}>
                       <div className="flex items-start gap-2">
                         <span className="text-2xl shrink-0">{g.icon}</span>
                         <div className="min-w-0 flex-1">
@@ -164,7 +179,7 @@ export function DivinityLayerModal() {
                               disabled={relationship >= RELATIONSHIP_MAX}
                               onClick={() => negotiateWithGod(g.id)}
                             >
-                              Negotiate (+{RELATIONSHIP_NEGOTIATE_GAIN})
+                              Negotiate (+{hasAmplifier ? RELATIONSHIP_NEGOTIATE_GAIN * 2 : RELATIONSHIP_NEGOTIATE_GAIN}{hasAmplifier ? " ×2" : ""})
                             </Button>
                             <Button
                               size="sm"
@@ -184,6 +199,29 @@ export function DivinityLayerModal() {
                             >
                               {allied ? "Allied" : "Ally"}
                             </Button>
+                          </div>
+                          {/* FEATURE 8 — Amplifier place/remove button */}
+                          <div className="flex gap-1 mt-1">
+                            {hasAmplifier ? (
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                className="h-5 text-[0.55rem] text-sky-300 border-sky-400/40 w-full"
+                                onClick={() => removeAmplifier(g.id)}
+                              >
+                                <Radio className="w-2.5 h-2.5 mr-0.5" /> Remove Amplifier
+                              </Button>
+                            ) : (
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                className="h-5 text-[0.55rem] text-sky-300 border-sky-400/40 w-full"
+                                disabled={amplifiers.length >= 3 || divinity < 30}
+                                onClick={() => placeAmplifier(g.id)}
+                              >
+                                <Radio className="w-2.5 h-2.5 mr-0.5" /> Place Amplifier (30 Div)
+                              </Button>
+                            )}
                           </div>
                         </div>
                       </div>

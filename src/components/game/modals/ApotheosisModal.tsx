@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import { useGameStore } from "@/game/state/store";
 import {
   DIVINE_LAWS,
@@ -14,7 +15,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } f
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
-import { Lock, Crown, CheckCircle2, Flame, AlertTriangle, RotateCcw } from "lucide-react";
+import { Lock, Crown, CheckCircle2, Flame, AlertTriangle, RotateCcw, Sparkles } from "lucide-react";
 import { formatNumber } from "../shared/format";
 
 const GRID_COLS = 8;
@@ -44,6 +45,12 @@ export function ApotheosisModal() {
   const convertFollower = useGameStore((s) => s.convertFollower);
   const purgeFollower = useGameStore((s) => s.purgeFollower);
   const initFollowerGrid = useGameStore((s) => s.initFollowerGrid);
+  // FEATURE 5 — Prophets
+  const prophets = useGameStore((s) => s.prophets || []);
+  const placeProphet = useGameStore((s) => s.placeProphet);
+  const removeProphet = useGameStore((s) => s.removeProphet);
+  const prophetConvertTimer = useGameStore((s) => s.prophetConvertTimer || 0);
+  const [placingProphet, setPlacingProphet] = useState(false);
 
   const isUnlocked = !!unlockedLayers.apotheosis;
   const enactedCount = DIVINE_LAWS.filter((l) => enactedLaws[l.id]).length;
@@ -122,6 +129,32 @@ export function ApotheosisModal() {
                 Current spread pattern: <span className="text-amber-300">{spreadPattern}</span>
               </div>
 
+              {/* FEATURE 5 — Prophets: place/extract buttons + countdown */}
+              <div className="rounded-md border border-amber-400/30 bg-amber-500/5 p-2 mb-2">
+                <div className="flex items-center justify-between mb-1">
+                  <div className="text-[0.7rem] uppercase tracking-wide text-amber-300/80 flex items-center gap-1">
+                    <Sparkles className="w-3 h-3" /> Prophets (max 2 · 50 Divinity each)
+                  </div>
+                  <Badge variant="outline" className="text-[0.6rem] text-amber-300 border-amber-400/40">
+                    {prophets.length}/2 placed · converts in {Math.ceil(prophetConvertTimer)}s
+                  </Badge>
+                </div>
+                <div className="text-[0.6rem] text-muted-foreground mb-1">
+                  A Prophet converts ALL adjacent heretics to faithful every 10 seconds. Click "Place Prophet" then click any cell.
+                </div>
+                <div className="flex gap-1">
+                  <Button
+                    size="sm"
+                    variant={placingProphet ? "default" : "outline"}
+                    disabled={prophets.length >= 2 || divinity < 50}
+                    onClick={() => setPlacingProphet(!placingProphet)}
+                    className="h-6 text-[0.6rem]"
+                  >
+                    {placingProphet ? "Cancel Placement" : "Place Prophet (50 Div)"}
+                  </Button>
+                </div>
+              </div>
+
               {/* Web stats */}
               <div className="grid grid-cols-4 gap-2 mb-2">
                 <div className="rounded-md bg-emerald-500/10 border border-emerald-400/20 p-1.5">
@@ -156,21 +189,40 @@ export function ApotheosisModal() {
                 {Array.from({ length: GRID_SIZE }, (_, i) => {
                   const cell = followerGrid[i] || { state: "faithful", type: "follower" };
                   const state = cell.state;
+                  const isProphet = cell.type === "prophet" || prophets.some((p) => p.cellIndex === i);
                   return (
                     <div
                       key={i}
-                      className={`relative aspect-square rounded-md border flex items-center justify-center text-lg
+                      onClick={() => {
+                        if (placingProphet) {
+                          placeProphet(i);
+                          setPlacingProphet(false);
+                        }
+                      }}
+                      className={`relative aspect-square rounded-md border flex items-center justify-center text-lg cursor-${placingProphet ? "pointer" : "default"}
                         ${state === "faithful"
-                          ? "border-emerald-400/40 bg-emerald-500/15"
+                          ? isProphet
+                            ? "border-amber-400/70 bg-amber-500/25 prophet-glow"
+                            : "border-emerald-400/40 bg-emerald-500/15"
                           : state === "heretical"
                             ? "border-rose-400/60 bg-rose-500/25 animate-pulse"
                             : "border-muted-foreground/15 bg-muted/5"
                         }
+                        ${placingProphet ? "hover:ring-2 hover:ring-amber-400/60" : ""}
                       `}
-                      title={`Cell ${i + 1} — ${state}`}
+                      title={`Cell ${i + 1} — ${state}${isProphet ? " (Prophet)" : ""}`}
                     >
-                      <span>{state === "faithful" ? "🙏" : state === "heretical" ? "😈" : "·"}</span>
-                      {state !== "empty" && (
+                      <span>{isProphet ? "🌟" : state === "faithful" ? "🙏" : state === "heretical" ? "😈" : "·"}</span>
+                      {isProphet && (
+                        <button
+                          onClick={(e) => { e.stopPropagation(); removeProphet(i); }}
+                          className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-rose-500/80 text-white text-[0.55rem] flex items-center justify-center hover:bg-rose-400"
+                          title="Remove Prophet"
+                        >
+                          ✕
+                        </button>
+                      )}
+                      {state !== "empty" && !isProphet && (
                         <div className="absolute inset-0 flex items-center justify-center opacity-0 hover:opacity-100 bg-black/60 transition-opacity">
                           <div className="flex gap-0.5">
                             <Button

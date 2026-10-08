@@ -1,5 +1,6 @@
 "use client";
 
+import { useState, useCallback } from "react";
 import { useGameStore } from "@/game/state/store";
 import {
   FORESIGHT_NODES,
@@ -72,6 +73,38 @@ export function EnlightenmentModal() {
   const supernovaIlluminate = useGameStore((s) => s.supernovaIlluminate);
   const blackHoleReset = useGameStore((s) => s.blackHoleReset);
   const setForesightRoute = useGameStore((s) => s.setForesightRoute);
+
+  // FEATURE 2 — Visual effect state for Supernova (flash) and Black Hole (collapse)
+  const [flashedNodes, setFlashedNodes] = useState<Set<string>>(new Set());
+  const [collapsingNodes, setCollapsingNodes] = useState<Set<string>>(new Set());
+
+  const triggerSupernova = useCallback(() => {
+    // Compute affected nodes (target + orthogonal neighbors) BEFORE the store action
+    const targetId = FORESIGHT_NODES[0]?.id;
+    if (!targetId) return;
+    const idx = FORESIGHT_NODES.findIndex((n) => n.id === targetId);
+    const affected = new Set<string>([targetId]);
+    if (idx >= 0) {
+      const row = Math.floor(idx / GRID_COLS);
+      const col = idx % GRID_COLS;
+      if (col > 0) affected.add(FORESIGHT_NODES[idx - 1].id);
+      if (col < GRID_COLS - 1) affected.add(FORESIGHT_NODES[idx + 1].id);
+      if (row > 0) affected.add(FORESIGHT_NODES[idx - GRID_COLS].id);
+      if (row < GRID_ROWS - 1) affected.add(FORESIGHT_NODES[idx + GRID_COLS].id);
+    }
+    supernovaIlluminate(targetId);
+    setFlashedNodes(affected);
+    setTimeout(() => setFlashedNodes(new Set()), 500);
+  }, [supernovaIlluminate]);
+
+  const triggerBlackHole = useCallback(() => {
+    // Capture all currently-illuminated nodes for the collapse animation, then fire the reset
+    const collapsing = new Set<string>(Object.keys(foresightNodes || {}));
+    setCollapsingNodes(collapsing);
+    blackHoleReset();
+    // The reset will clear `foresightNodes` from the store; the collapse animation runs locally for 500ms
+    setTimeout(() => setCollapsingNodes(new Set()), 550);
+  }, [blackHoleReset, foresightNodes]);
 
   const isUnlocked = !!unlockedLayers.enlightenment;
   const purchasedCount = countForesightNodes(foresightNodes);
@@ -166,7 +199,7 @@ export function EnlightenmentModal() {
                 size="sm"
                 variant="outline"
                 disabled={divinity < 50}
-                onClick={() => supernovaIlluminate(FORESIGHT_NODES[0]?.id)}
+                onClick={triggerSupernova}
                 className="h-auto py-2 flex flex-col items-center gap-0.5"
                 title="Supernova illuminates a target node AND its adjacent neighbors"
               >
@@ -177,7 +210,7 @@ export function EnlightenmentModal() {
               <Button
                 size="sm"
                 variant="outline"
-                onClick={blackHoleReset}
+                onClick={triggerBlackHole}
                 className="h-auto py-2 flex flex-col items-center gap-0.5"
               >
                 <Disc3 className="w-4 h-4 text-rose-300" />
@@ -213,13 +246,16 @@ export function EnlightenmentModal() {
                   className="absolute inset-0 grid gap-1.5"
                   style={{ gridTemplateColumns: `repeat(${GRID_COLS}, 1fr)`, gridTemplateRows: `repeat(${GRID_ROWS}, 1fr)` }}
                 >
-                  {FORESIGHT_NODES.map((n, idx) => {
+                  {FORESIGHT_NODES.map((n) => {
                     const lit = !!foresightNodes[n.id];
                     const prereqMet = !n.requires || foresightNodes[n.requires];
                     const canAfford = divinity >= n.cost;
                     const revealed = !!constellationRevealed[n.id];
                     // Highlight nodes in big constellations
                     const inBig = bigConstellations.some((c) => c.nodeIds.includes(n.id));
+                    // FEATURE 2 — Supernova flash + Black Hole collapse visual effects
+                    const isFlashing = flashedNodes.has(n.id);
+                    const isCollapsing = collapsingNodes.has(n.id);
                     return (
                       <button
                         key={n.id}
@@ -228,13 +264,14 @@ export function EnlightenmentModal() {
                         title={`${n.name}\n${n.desc}\nCost: ${n.cost} Divinity${n.requires ? `\nRequires: ${FORESIGHT_NODES.find((x) => x.id === n.requires)?.name}` : ""}`}
                         className={`relative rounded-md border transition-all flex items-center justify-center
                           ${lit
-                            ? `border-violet-400/60 bg-violet-500/20 ${inBig ? "ring-2 ring-amber-400/50" : ""}`
+                            ? `border-violet-400/60 bg-violet-500/20 ${inBig ? "ring-2 ring-amber-400/50" : ""} ${isFlashing ? "supernova-flash" : ""}`
                             : prereqMet && canAfford
                               ? "border-cyan-400/30 bg-cyan-950/20 hover:border-cyan-400/70 hover:bg-cyan-500/10"
                               : prereqMet
                                 ? "border-muted-foreground/20 bg-muted/10 opacity-50"
                                 : "border-rose-400/20 bg-rose-950/10 opacity-40"
                           }
+                          ${isCollapsing ? "black-hole-collapse" : ""}
                         `}
                       >
                         <span className={`text-xl ${lit ? "" : "grayscale opacity-70"}`}>{n.icon}</span>

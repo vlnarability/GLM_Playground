@@ -42,6 +42,8 @@ export interface UniverseSlotOption {
     popGrowthMult?: number;
     testamentMult?: number;
   };
+  // FEATURE 10 — Forbidden Words: extremely powerful options that add +1 Paradox when chosen
+  forbidden?: boolean;
 }
 
 export const UNIVERSE_SLOTS: UniverseSlot[] = [
@@ -53,6 +55,8 @@ export const UNIVERSE_SLOTS: UniverseSlot[] = [
     options: [
       { id: "phys_slow", label: "Slow Constants", desc: "+20% cap — heavy atoms, slow light.", bonus: { capMult: 0.20 } },
       { id: "phys_fast", label: "Fast Constants", desc: "+25% production — eager reactions.", bonus: { productionMult: 0.25 } },
+      // FEATURE 10 — Forbidden Word
+      { id: "phys_paradox", label: "Paradox Constants", desc: "+80% production & +40% cap — reality bends but reality resists. FORBIDDEN: +1 Paradox.", bonus: { productionMult: 0.80, capMult: 0.40 }, forbidden: true },
     ],
   },
   {
@@ -73,6 +77,8 @@ export const UNIVERSE_SLOTS: UniverseSlot[] = [
     options: [
       { id: "magic_high", label: "High Magic", desc: "+35% production — magic is everywhere.", bonus: { productionMult: 0.35 } },
       { id: "magic_low", label: "Subtle Magic", desc: "+10% to all four — magic is rare but potent.", bonus: { productionMult: 0.10, capMult: 0.10, epMult: 0.10, popGrowthMult: 0.10 } },
+      // FEATURE 10 — Forbidden Word
+      { id: "magic_paradox", label: "Paradox Magic", desc: "+100% production & +50% EP — magic overwhelms reality. FORBIDDEN: +1 Paradox.", bonus: { productionMult: 1.00, epMult: 0.50 }, forbidden: true },
     ],
   },
   {
@@ -83,6 +89,8 @@ export const UNIVERSE_SLOTS: UniverseSlot[] = [
     options: [
       { id: "time_loop", label: "Cyclical Time", desc: "+30% Testament gain — echoes return.", bonus: { testamentMult: 0.30 } },
       { id: "time_linear", label: "Linear Time", desc: "+25% production — once-burned, no return.", bonus: { productionMult: 0.25 } },
+      // FEATURE 10 — Forbidden Word
+      { id: "time_paradox", label: "Paradox Time", desc: "+90% production & +60% EP — past & future collapse into now. FORBIDDEN: +1 Paradox.", bonus: { productionMult: 0.90, epMult: 0.60 }, forbidden: true },
     ],
   },
   {

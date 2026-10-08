@@ -375,6 +375,7 @@ function initialMetaState(): Partial<GameState> {
     activeTrialRealm: null,
     trialRealmState: {},
     trialRealmsCompleted: {},
+    trialRealmBestTimes: {}, // FEATURE 1 — local leaderboard (no login)
     // Layer 2 — Constellation Map
     constellationNodes: {},
     constellationRevealed: {},
@@ -383,15 +384,34 @@ function initialMetaState(): Partial<GameState> {
     priceHistory: { food: [10], water: [8], materials: [15], science: [20], gold: [25], energy: [30] },
     marketOwnedResources: {},
     marketTickTimer: 10,
+    // FEATURE 3 — Market Crashes
+    marketCrashTimer: 120,
+    marketCrashActive: false,
+    marketCrashDuration: 0,
     // Layer 4 — Sacred Grid (5×4 = 20 cells)
     worldGrid: Array(20).fill(null),
     worldGridSeeds: Array(20).fill(null),
+    // FEATURE 4 — Natural Disasters
+    disasterTimer: 90,
+    lastDisasterCell: null,
+    lastDisasterAt: 0,
     // Layer 5 — Heresy Web (8×4 = 32 follower cells)
     followerGrid: makeInitialFollowerGrid(),
     heresySpreadTimer: 10,
+    // FEATURE 5 — Prophets (max 2 at a time)
+    prophets: [],
+    prophetConvertTimer: 10,
     // Layer 6 — Dimension Engine (3 parallel dimensions)
     dimensions: makeInitialDimensions(),
     dimensionRiftTimer: 60,
+
+    // ===== FEATURE ENHANCEMENTS (L7–L10) =====
+    // FEATURE 8 — Amplifiers (max 3 at a time)
+    amplifiers: [],
+    // FEATURE 9 — Temporal Storms (per-battle)
+    temporalStorms: {},
+    // FEATURE 10 — Forbidden Words (paradox counter)
+    universeParadox: 0,
   };
 }
 
@@ -1307,10 +1327,16 @@ export const useGameStore = create<GameStore>()(
         // ===== REBUILD: LAYERS 1-6 UNIQUE GAMEPLAY LOOPS — tick processing =====
         // Layer 1 — Trial Realms: progress the active realm's mini-game
         let activeTrialRealm = s.activeTrialRealm;
+        // FEATURE 1 — capture the original realm ID for safe indexing (activeTrialRealm may be reassigned to null on auto-close)
+        const tickRealmId = s.activeTrialRealm;
         let trialRealmState = { ...(s.trialRealmState || {}) };
         let trialRealmsCompleted = { ...(s.trialRealmsCompleted || {}) };
+        // FEATURE 1 — local best-time leaderboard (no login required)
+        let trialRealmBestTimes = { ...(s.trialRealmBestTimes || {}) };
         if (activeTrialRealm && PLAYABLE_REALM_IDS.includes(activeTrialRealm)) {
           const st = { ...(trialRealmState[activeTrialRealm] || makeDefaultRealmState(activeTrialRealm)) };
+          // Ensure startedAt is set (migration safety)
+          if (!st.startedAt) st.startedAt = newTime - realDt;
           switch (activeTrialRealm) {
             case "realm_growth": {
               st.energy = Math.min(100, (st.energy || 0) + REALM_GROWTH_PASSIVE_FILL_PER_SEC * realDt);
@@ -1332,7 +1358,13 @@ export const useGameStore = create<GameStore>()(
               // Check completion: survived ≥ 90s AND gold ≥ 200
               if ((st.survivedTime || 0) >= REALM_DISCONTENT_SURVIVE_SECONDS && (st.gold || 0) >= REALM_DISCONTENT_GOLD_GOAL && !st.completed) {
                 st.completed = true;
-                trialRealmsCompleted[activeTrialRealm] = true;
+                trialRealmsCompleted[tickRealmId!] = true;
+                // FEATURE 1 — record best time
+                const completionTime = Math.max(0, newTime - (st.startedAt || newTime));
+                const prevBest = trialRealmBestTimes[tickRealmId!];
+                if (prevBest === undefined || completionTime < prevBest) {
+                  trialRealmBestTimes[tickRealmId!] = completionTime;
+                }
                 setTimeout(() => get().addToLog("Realm of Discontent conquered! Permanent reward granted."), 0);
               }
               break;
@@ -1350,7 +1382,13 @@ export const useGameStore = create<GameStore>()(
                 st.reachedGalactic = true;
                 if (!st.completed) {
                   st.completed = true;
-                  trialRealmsCompleted[activeTrialRealm] = true;
+                  trialRealmsCompleted[tickRealmId!] = true;
+                  // FEATURE 1 — record best time (faster = better)
+                  const completionTime = Math.max(0, newTime - (st.startedAt || newTime));
+                  const prevBest = trialRealmBestTimes[tickRealmId!];
+                  if (prevBest === undefined || completionTime < prevBest) {
+                    trialRealmBestTimes[tickRealmId!] = completionTime;
+                  }
                   setTimeout(() => get().addToLog("Realm of Swiftness conquered! +15% all production speed."), 0);
                 }
               }
@@ -1361,7 +1399,7 @@ export const useGameStore = create<GameStore>()(
           if (st.completed && activeTrialRealm !== "realm_growth") {
             activeTrialRealm = null;
           }
-          trialRealmState[activeTrialRealm || s.activeTrialRealm!] = st;
+          if (tickRealmId) trialRealmState[tickRealmId] = st;
         }
 
         // Layer 3 — Divine Market: random-walk prices every 10s
@@ -1369,17 +1407,52 @@ export const useGameStore = create<GameStore>()(
         let priceHistory = { ...(s.priceHistory || {}) };
         let marketOwnedResources = { ...(s.marketOwnedResources || {}) };
         let marketTickTimer = (s.marketTickTimer || 10) - realDt;
-        if (marketTickTimer <= 0) {
-          marketTickTimer = 10;
-          for (const r of Object.keys(marketPrices)) {
-            const cur = marketPrices[r] || 10;
-            const drift = (Math.random() - 0.5) * 0.6; // ±30%
-            let next = cur * (1 + drift);
-            next = Math.max(1, Math.min(200, next));
-            marketPrices[r] = next;
-            const hist = (priceHistory[r] || []).slice(-19);
-            hist.push(next);
-            priceHistory[r] = hist;
+        // FEATURE 3 — Market Crashes (every ~120s, 20% chance, 30s duration at 30% base price)
+        let marketCrashTimer = (s.marketCrashTimer || 120) - realDt;
+        let marketCrashActive = !!(s.marketCrashActive);
+        let marketCrashDuration = Math.max(0, (s.marketCrashDuration || 0) - realDt);
+        const MARKET_BASE_PRICES: Record<string, number> = { food: 10, water: 8, materials: 15, science: 20, gold: 25, energy: 30 };
+        if (marketCrashActive) {
+          // Force all prices to 30% of base during crash (continuous — overrides random walk)
+          for (const r of Object.keys(MARKET_BASE_PRICES)) {
+            marketPrices[r] = MARKET_BASE_PRICES[r] * 0.3;
+          }
+          if (marketCrashDuration <= 0) {
+            // Crash ends — restore prices to base & resume normal walk
+            marketCrashActive = false;
+            marketCrashTimer = 120;
+            for (const r of Object.keys(MARKET_BASE_PRICES)) {
+              marketPrices[r] = MARKET_BASE_PRICES[r];
+            }
+            setTimeout(() => get().addToLog("📈 Market crash resolved — prices recover."), 0);
+          }
+        } else {
+          if (marketCrashTimer <= 0) {
+            // 20% chance to trigger a crash
+            if (Math.random() < 0.20) {
+              marketCrashActive = true;
+              marketCrashDuration = 30;
+              for (const r of Object.keys(MARKET_BASE_PRICES)) {
+                marketPrices[r] = MARKET_BASE_PRICES[r] * 0.3;
+              }
+              setTimeout(() => get().addToLog("⚠ MARKET CRASH! All prices dropped to 30% — buy now!"), 0);
+            } else {
+              marketCrashTimer = 120;
+            }
+          }
+          // Normal random walk (skipped during active crash)
+          if (marketTickTimer <= 0) {
+            marketTickTimer = 10;
+            for (const r of Object.keys(marketPrices)) {
+              const cur = marketPrices[r] || 10;
+              const drift = (Math.random() - 0.5) * 0.6; // ±30%
+              let next = cur * (1 + drift);
+              next = Math.max(1, Math.min(200, next));
+              marketPrices[r] = next;
+              const hist = (priceHistory[r] || []).slice(-19);
+              hist.push(next);
+              priceHistory[r] = hist;
+            }
           }
         }
         // Divine-dends — passive Divinity from owned resource types (100+ units → +1 Div/s)
@@ -1389,6 +1462,42 @@ export const useGameStore = create<GameStore>()(
             if ((marketOwnedResources[r] || 0) >= 100) dividends += 1;
           }
           if (dividends > 0) divinity += dividends * realDt;
+        }
+
+        // Layer 4 — FEATURE 4 — Natural Disasters: every ~90s, 15% chance to destroy a random tile (not protected by a Mountain neighbor)
+        let worldGrid = s.worldGrid ? s.worldGrid.slice() : Array(20).fill(null);
+        let worldGridSeeds = s.worldGridSeeds ? s.worldGridSeeds.slice() : Array(20).fill(null);
+        let disasterTimer = Math.max(0, (s.disasterTimer || 90) - realDt);
+        let lastDisasterCell = s.lastDisasterCell ?? null;
+        let lastDisasterAt = s.lastDisasterAt || 0;
+        if (unlockedLayers.genesis && disasterTimer <= 0) {
+          disasterTimer = 90;
+          // Roll 15% chance to destroy a random filled tile (excluding mountain-adjacent)
+          if (Math.random() < 0.15) {
+            // Build list of vulnerable cells: filled tiles NOT adjacent to a Mountain
+            const vulnerable: number[] = [];
+            for (let i = 0; i < worldGrid.length; i++) {
+              if (worldGrid[i] === null) continue;
+              if (worldGrid[i] === "mountain") continue; // mountains are sturdy
+              const row = Math.floor(i / 5);
+              const col = i % 5;
+              const neighbors = [
+                col > 0 ? i - 1 : -1,
+                col < 4 ? i + 1 : -1,
+                row > 0 ? i - 5 : -1,
+                row < 3 ? i + 5 : -1,
+              ].filter((n) => n >= 0);
+              const protectedByMountain = neighbors.some((n) => worldGrid[n] === "mountain");
+              if (!protectedByMountain) vulnerable.push(i);
+            }
+            if (vulnerable.length > 0) {
+              const target = vulnerable[Math.floor(Math.random() * vulnerable.length)];
+              worldGrid[target] = null;
+              lastDisasterCell = target;
+              lastDisasterAt = newTime;
+              setTimeout(() => get().addToLog(`🌋 Disaster! Tile on cell ${target + 1} was destroyed. Rebuild it (costs a tile from your supply).`), 0);
+            }
+          }
         }
 
         // Layer 5 — Heresy Web: spread every 10s (independent of the global heresy meter)
@@ -1411,6 +1520,37 @@ export const useGameStore = create<GameStore>()(
             if (neighbors.length === 0) continue;
             const target = neighbors[Math.floor(Math.random() * neighbors.length)];
             next[target].state = "heretical";
+          }
+          followerGrid = next;
+        }
+
+        // FEATURE 5 — Prophets: every 10s, each prophet converts ALL adjacent heretics to faithful
+        let prophets = (s.prophets || []).map((p) => ({ ...p }));
+        let prophetConvertTimer = Math.max(0, (s.prophetConvertTimer || 10) - realDt);
+        if (unlockedLayers.apotheosis && prophets.length > 0 && prophetConvertTimer <= 0) {
+          prophetConvertTimer = 10;
+          const next = followerGrid.map((c) => ({ ...c }));
+          for (const p of prophets) {
+            const i = p.cellIndex;
+            const row = Math.floor(i / 8);
+            const col = i % 8;
+            const neighbors = [
+              col > 0 ? i - 1 : -1,
+              col < 7 ? i + 1 : -1,
+              row > 0 ? i - 8 : -1,
+              row < 3 ? i + 8 : -1,
+            ].filter((n) => n >= 0);
+            let converted = 0;
+            for (const n of neighbors) {
+              if (next[n].state === "heretical") {
+                next[n].state = "faithful";
+                converted++;
+              }
+            }
+            if (converted > 0) {
+              p.lastConvertedAt = newTime;
+              setTimeout(() => get().addToLog(`🌟 Prophet converted ${converted} adjacent heretic(s) back to the faithful.`), 0);
+            }
           }
           followerGrid = next;
         }
@@ -1502,12 +1642,26 @@ export const useGameStore = create<GameStore>()(
           activeTrialRealm,
           trialRealmState,
           trialRealmsCompleted,
+          trialRealmBestTimes,
           marketPrices,
           priceHistory,
           marketOwnedResources,
           marketTickTimer,
+          // FEATURE 3 — Market Crashes
+          marketCrashTimer,
+          marketCrashActive,
+          marketCrashDuration,
+          // FEATURE 4 — Natural Disasters
+          worldGrid,
+          worldGridSeeds,
+          disasterTimer,
+          lastDisasterCell,
+          lastDisasterAt,
           followerGrid,
           heresySpreadTimer,
+          // FEATURE 5 — Prophets
+          prophets,
+          prophetConvertTimer,
           dimensions,
           dimensionRiftTimer,
         });
@@ -2564,6 +2718,10 @@ export const useGameStore = create<GameStore>()(
         if (!realmState[realmId]) {
           realmState[realmId] = makeDefaultRealmState(realmId);
         }
+        // FEATURE 1 — record realm start time for leaderboard tracking
+        if (!realmState[realmId].startedAt) {
+          realmState[realmId].startedAt = s.time || 0;
+        }
         set({ activeTrialRealm: realmId, trialRealmState: realmState });
       },
 
@@ -2581,9 +2739,17 @@ export const useGameStore = create<GameStore>()(
         const popGain = Math.max(2, Math.floor(s.population * 0.5));
         const newPop = s.population + popGain;
         const trialRealmsCompleted = { ...(s.trialRealmsCompleted || {}) };
+        // FEATURE 1 — local leaderboard
+        const trialRealmBestTimes = { ...(s.trialRealmBestTimes || {}) };
         if (st.breaks >= REALM_GROWTH_BREAKS_GOAL) {
           st.completed = true;
           trialRealmsCompleted.realm_growth = true;
+          // Record best time (only if faster than previous)
+          const completionTime = Math.max(0, (s.time || 0) - (st.startedAt || s.time || 0));
+          const prevBest = trialRealmBestTimes.realm_growth;
+          if (prevBest === undefined || completionTime < prevBest) {
+            trialRealmBestTimes.realm_growth = completionTime;
+          }
           setTimeout(() => get().addToLog(`Realm of Growth conquered! 10 Break-Throughs performed. +10% population growth permanently.`), 0);
         }
         rs.realm_growth = st;
@@ -2592,6 +2758,7 @@ export const useGameStore = create<GameStore>()(
           maxPopulation: Math.max(s.maxPopulation || 0, newPop),
           trialRealmState: rs,
           trialRealmsCompleted,
+          trialRealmBestTimes,
           activeTrialRealm: st.completed ? null : s.activeTrialRealm,
         });
         get().addToLog(`🌱 Break-Through #${st.breaks}! +${popGain} population.`);
@@ -2864,6 +3031,142 @@ export const useGameStore = create<GameStore>()(
         get().addToLog("Dimension Engine initialized — three parallel timelines.");
       },
 
+      // FEATURE 6 — Collapse two dimensions of the same stage into one
+      collapseDimensions: (fromId, toId) => {
+        const s = get();
+        if (!s.unlockedLayers?.singularity) return;
+        const cost = 50;
+        if ((s.divinity || 0) < cost) return;
+        const dims = (s.dimensions || makeInitialDimensions()).map((d) => ({ ...d }));
+        const from = dims.find((x) => x.id === fromId);
+        const to = dims.find((x) => x.id === toId);
+        if (!from || !to || from.id === to.id) return;
+        // Both dimensions must be at the same stageIndex to collapse
+        if (from.stageIndex !== to.stageIndex) {
+          get().addToLog(`Collapse requires both dimensions at the same stage (${from.name}: ${from.stageIndex}, ${to.name}: ${to.stageIndex}).`);
+          return;
+        }
+        // Merge into `to`: combined speed + combined resources + combined pop
+        to.speed = to.speed + from.speed;
+        to.resources = to.resources + from.resources;
+        to.pop = to.pop + from.pop;
+        to.reachedGalactic = to.reachedGalactic || from.reachedGalactic;
+        const remaining = dims.filter((d) => d.id !== from.id);
+        set({ divinity: (s.divinity || 0) - cost, dimensions: remaining });
+        get().addToLog(`🌌 Dimension Collapse! ${from.name} merged into ${to.name} — combined speed ${to.speed}×, resources ${to.resources.toFixed(0)}, pop ${Math.floor(to.pop)} (-50 Divinity).`);
+      },
+
+      // ===== FEATURE ENHANCEMENTS — NEW ACTIONS =====
+      // FEATURE 5 — Prophets (place on heresy grid; max 2)
+      placeProphet: (cellIndex) => {
+        const s = get();
+        if (!s.unlockedLayers?.apotheosis) return;
+        if (cellIndex < 0 || cellIndex >= 32) return;
+        const cost = 50;
+        if ((s.divinity || 0) < cost) return;
+        const prophets = (s.prophets || []).slice();
+        if (prophets.length >= 2) {
+          get().addToLog("Max 2 Prophets at a time.");
+          return;
+        }
+        if (prophets.some((p) => p.cellIndex === cellIndex)) {
+          get().addToLog("A Prophet is already placed there.");
+          return;
+        }
+        // Place only on empty or faithful cells
+        const grid = (s.followerGrid || makeInitialFollowerGrid()).slice();
+        const cell = grid[cellIndex];
+        if (!cell || cell.state === "empty") {
+          // Convert empty cell to faithful so the prophet has a place to stand
+          grid[cellIndex] = { state: "faithful", type: "prophet" };
+        } else if (cell.state === "heretical") {
+          grid[cellIndex] = { state: "faithful", type: "prophet" };
+        } else {
+          grid[cellIndex] = { ...cell, type: "prophet" };
+        }
+        prophets.push({ cellIndex, lastConvertedAt: 0 });
+        set({
+          divinity: (s.divinity || 0) - cost,
+          prophets,
+          followerGrid: grid,
+        });
+        get().addToLog(`🌟 Prophet placed on cell ${cellIndex + 1} (-50 Divinity). Converts adjacent heretics every 10s.`);
+      },
+
+      removeProphet: (cellIndex) => {
+        const s = get();
+        if (!s.unlockedLayers?.apotheosis) return;
+        const prophets = (s.prophets || []).filter((p) => p.cellIndex !== cellIndex);
+        const grid = (s.followerGrid || makeInitialFollowerGrid()).slice();
+        if (grid[cellIndex]?.type === "prophet") {
+          grid[cellIndex] = { state: "faithful", type: "follower" };
+        }
+        set({ prophets, followerGrid: grid });
+        get().addToLog(`Prophet removed from cell ${cellIndex + 1}.`);
+      },
+
+      // FEATURE 8 — Amplifiers (max 3; place between your god and an NPC god to double Negotiate gains)
+      placeAmplifier: (godId) => {
+        const s = get();
+        if (!s.unlockedLayers?.divinity) return;
+        const cost = 30;
+        if ((s.divinity || 0) < cost) return;
+        if (!MINOR_GOD_MAP[godId]) return;
+        const amplifiers = (s.amplifiers || []).slice();
+        if (amplifiers.length >= 3) {
+          get().addToLog("Max 3 Amplifiers at a time.");
+          return;
+        }
+        if (amplifiers.some((a) => a.godId === godId)) {
+          get().addToLog(`Amplifier already placed on ${MINOR_GOD_MAP[godId].name}.`);
+          return;
+        }
+        const nextId = (amplifiers.reduce((m, a) => Math.max(m, a.id), 0) || 0) + 1;
+        amplifiers.push({ id: nextId, godId });
+        set({ divinity: (s.divinity || 0) - cost, amplifiers });
+        get().addToLog(`📡 Amplifier placed on ${MINOR_GOD_MAP[godId].name} (-30 Divinity). Negotiate gains doubled.`);
+      },
+
+      removeAmplifier: (godId) => {
+        const s = get();
+        if (!s.unlockedLayers?.divinity) return;
+        const amplifiers = (s.amplifiers || []).filter((a) => a.godId !== godId);
+        set({ amplifiers });
+        get().addToLog(`Amplifier removed from ${MINOR_GOD_MAP[godId]?.name || godId}.`);
+      },
+
+      // FEATURE 9 — Stabilize Time (costs 1 Divine Fragment; ends an active temporal storm)
+      stabilizeTime: (oldGodId) => {
+        const s = get();
+        if (!s.unlockedLayers?.infinity) return;
+        if ((s.divineFragments || 0) < 1) {
+          get().addToLog("Not enough Divine Fragments to Stabilize Time (need 1).");
+          return;
+        }
+        const temporalStorms = { ...(s.temporalStorms || {}) };
+        if (!temporalStorms[oldGodId]) {
+          get().addToLog("No temporal storm is active for that battle.");
+          return;
+        }
+        temporalStorms[oldGodId] = false;
+        set({ divineFragments: (s.divineFragments || 0) - 1, temporalStorms });
+        get().addToLog(`⏳ Time Stabilized — temporal storm ended (-1 Divine Fragment).`);
+      },
+
+      // FEATURE 10 — Resolve Paradox (costs 100 Divinity; reduces paradox by 1)
+      resolveParadox: () => {
+        const s = get();
+        if (!s.unlockedLayers?.eternity) return;
+        const cost = 100;
+        if ((s.divinity || 0) < cost) return;
+        if ((s.universeParadox || 0) <= 0) {
+          get().addToLog("No paradox to resolve.");
+          return;
+        }
+        set({ divinity: (s.divinity || 0) - cost, universeParadox: (s.universeParadox || 0) - 1 });
+        get().addToLog(`✦ Paradox resolved (-1 Paradox, -100 Divinity). Reality steadies.`);
+      },
+
       // ============ LAYER 7 — OMNIPOTENCE (Bio-engineering) ============
       toggleHybridLineage: (hybridId) => {
         // LEGACY stub — kept for migration. The new Creature Lab doesn't use hybrids.
@@ -2896,17 +3199,35 @@ export const useGameStore = create<GameStore>()(
         const id = `creature_${Date.now()}_${Math.floor(Math.random() * 1000)}`;
         const body = CREATURE_BODY_TYPE_MAP[bodyType];
         const name = (draft.name && draft.name.trim()) || `New ${body.name}`;
+        // FEATURE 7 — Mutations: 10% chance to mutate on creation
+        const mutated = Math.random() < 0.10;
+        const mutatedStats: "attack" | "defense" | "speed" = (["attack", "defense", "speed"] as const)[Math.floor(Math.random() * 3)];
+        let finalStats = { ...stats };
+        if (mutated) {
+          // Mutated creatures are 50% more powerful (all stats × 1.5)
+          finalStats = {
+            attack: Math.round(stats.attack * 1.5),
+            defense: Math.round(stats.defense * 1.5),
+            speed: Math.round(stats.speed * 1.5),
+          };
+        }
         const creature: Creature = {
           id,
           name,
           bodyType,
           diet,
           special,
-          ...stats,
+          ...finalStats,
           createdAt: s.time || 0,
+          mutated,
+          mutatedStat: mutated ? mutatedStats : undefined,
         };
         set({ creatures: [...(s.creatures || []), creature] });
-        get().addToLog(`Creature created: ${creature.name} (${body.name}) — ATK ${creature.attack} / DEF ${creature.defense} / SPD ${creature.speed}.`);
+        if (mutated) {
+          get().addToLog(`🧬 Mutation! ${creature.name} (${body.name}) — ATK ${creature.attack} / DEF ${creature.defense} / SPD ${creature.speed}. (+50% power, +20% instability)`);
+        } else {
+          get().addToLog(`Creature created: ${creature.name} (${body.name}) — ATK ${creature.attack} / DEF ${creature.defense} / SPD ${creature.speed}.`);
+        }
       },
 
       addCreatureToLegion: (creatureId, legionId) => {
@@ -2985,9 +3306,12 @@ export const useGameStore = create<GameStore>()(
           get().addToLog(`${god.name}'s relationship is already maxed.`);
           return;
         }
-        relationships[godId] = Math.min(RELATIONSHIP_MAX, cur + RELATIONSHIP_NEGOTIATE_GAIN);
+        // FEATURE 8 — Amplifiers double the relationship gain from Negotiate
+        const hasAmplifier = (s.amplifiers || []).some((a) => a.godId === godId);
+        const gain = hasAmplifier ? RELATIONSHIP_NEGOTIATE_GAIN * 2 : RELATIONSHIP_NEGOTIATE_GAIN;
+        relationships[godId] = Math.min(RELATIONSHIP_MAX, cur + gain);
         set({ godRelationships: relationships });
-        get().addToLog(`Negotiated with ${god.name}: +${RELATIONSHIP_NEGOTIATE_GAIN} relationship (now ${relationships[godId]}/100).`);
+        get().addToLog(`Negotiated with ${god.name}: +${gain} relationship (now ${relationships[godId]}/100)${hasAmplifier ? " (Amplifier ×2!)" : ""}.`);
       },
 
       tradeWithGod: (godId) => {
@@ -3126,6 +3450,13 @@ export const useGameStore = create<GameStore>()(
         const battles = { ...(s.oldGodBattles || {}) };
         const battle = battles[oldGodId];
         if (!battle || battle.status !== "in_progress") return;
+        // FEATURE 9 — Temporal Storms: 20% chance per battle turn to spawn a storm
+        const temporalStorms = { ...(s.temporalStorms || {}) };
+        if (!temporalStorms[oldGodId] && Math.random() < 0.20) {
+          temporalStorms[oldGodId] = true;
+          setTimeout(() => get().addToLog(`🌀 Temporal Storm engulfs the battlefield — the timeline shudders. (Stabilize Time for 1 Divine Fragment to end it.)`), 0);
+        }
+        const stormActive = !!temporalStorms[oldGodId];
         // Compute player attack from deployed legions
         const deployedPowers = battle.deployedLegionIds.map((lid) => {
           const legion = (s.legions || []).find((l) => l.id === lid);
@@ -3139,19 +3470,30 @@ export const useGameStore = create<GameStore>()(
         });
         const weakToBodyType = god.weakness === "predator" || god.weakness === "flyer" || god.weakness === "burrower";
         const playerDmg = computePlayerAttack(deployedPowers, calledAllies, weakToBodyType);
-        // Compute boss attack back
+        // Compute boss attack back (storm shuffles timeline: 50% delayed, 50% accelerated)
         const totalDefense = deployedPowers.reduce((a, p) => a + p.defense, 0);
-        const bossDmg = computeBossAttack(god.attack, totalDefense);
+        let bossDmg = computeBossAttack(god.attack, totalDefense);
+        let stormNote = "";
+        if (stormActive) {
+          if (Math.random() < 0.5) {
+            bossDmg = Math.round(bossDmg * 0.5); // delayed — half damage
+            stormNote = " (storm delayed enemy strike)";
+          } else {
+            bossDmg = Math.round(bossDmg * 1.5); // accelerated — 50% more damage
+            stormNote = " (storm accelerated enemy strike)";
+          }
+        }
         // Apply damage
         const bossHp = Math.max(0, battle.bossHp - playerDmg);
         const log = [...(battle.log || [])];
-        log.push(`Turn ${battle.turn + 1}: You deal ${playerDmg} damage. ${god.name} retaliates for ${bossDmg}.`);
+        log.push(`Turn ${battle.turn + 1}: You deal ${playerDmg} damage. ${god.name} retaliates for ${bossDmg}.${stormNote}`);
         if (log.length > 6) log.shift();
         let status: import("../data/infinity").BattleStatus = battle.status;
         let phase = battle.phase;
         if (bossHp <= 0) {
           status = "won";
           log.push(`${god.name} has fallen! +1 Divine Fragment.`);
+          temporalStorms[oldGodId] = false; // clear storm on win
         } else {
           phase = phaseForHp(god, bossHp);
         }
@@ -3163,13 +3505,13 @@ export const useGameStore = create<GameStore>()(
           turn: battle.turn + 1,
           log,
         };
-        set({ oldGodBattles: battles });
+        set({ oldGodBattles: battles, temporalStorms });
         if (status === "won") {
           const fragments = (s.divineFragments || 0) + 1;
           set({ divineFragments: fragments });
           get().addToLog(`Victory over ${god.name}! Earned a Divine Fragment (total: ${fragments}).`);
         } else {
-          get().addToLog(`Strike ${god.name} for ${playerDmg} (HP ${bossHp}/${battle.bossMaxHp}). Boss hits back for ${bossDmg}.`);
+          get().addToLog(`Strike ${god.name} for ${playerDmg} (HP ${bossHp}/${battle.bossMaxHp}). Boss hits back for ${bossDmg}${stormNote}.`);
         }
       },
 
@@ -3217,11 +3559,27 @@ export const useGameStore = create<GameStore>()(
         if (!s.unlockedLayers?.eternity) return;
         if (slotIndex < 0 || slotIndex >= UNIVERSE_SLOTS.length) return;
         const slot = UNIVERSE_SLOTS[slotIndex];
-        if (!slot.options.find((o) => o.id === optionId)) return;
+        const opt = slot.options.find((o) => o.id === optionId);
+        if (!opt) return;
         const rules = (s.universeRules || Array(UNIVERSE_SLOTS.length).fill(null)).slice();
+        const prevOptId = rules[slotIndex];
+        const prevOpt = prevOptId ? slot.options.find((o) => o.id === prevOptId) : null;
+        // FEATURE 10 — Forbidden Words: track paradox delta
+        let universeParadox = s.universeParadox || 0;
+        if (prevOpt?.forbidden && !opt.forbidden) universeParadox = Math.max(0, universeParadox - 1);
+        if (!prevOpt?.forbidden && opt.forbidden) universeParadox = universeParadox + 1;
         rules[slotIndex] = optionId;
-        set({ universeRules: rules });
-        get().addToLog(`Universe rule set: ${slot.name} → ${slot.options.find((o) => o.id === optionId)?.label}.`);
+        // If paradox reaches 3, universe creation fails and resets
+        if (universeParadox >= 3) {
+          set({
+            universeRules: Array(UNIVERSE_SLOTS.length).fill(null),
+            universeParadox: 0,
+          });
+          setTimeout(() => get().addToLog(`💥 PARADOX OVERLOAD! Reality rejects your creation — universe rules reset. Resolve paradoxes before they pile up.`), 0);
+          return;
+        }
+        set({ universeRules: rules, universeParadox });
+        get().addToLog(`Universe rule set: ${slot.name} → ${opt.label}${opt.forbidden ? " (FORBIDDEN — +1 Paradox)" : ""}.`);
       },
 
       toggleKeptGod: (godId) => {
@@ -3717,22 +4075,45 @@ export const useGameStore = create<GameStore>()(
         if (persisted.activeTrialRealm === undefined) persisted.activeTrialRealm = null;
         if (!persisted.trialRealmState) persisted.trialRealmState = {};
         if (!persisted.trialRealmsCompleted) persisted.trialRealmsCompleted = {};
+        // FEATURE 1 — local leaderboard migration
+        if (!persisted.trialRealmBestTimes) persisted.trialRealmBestTimes = {};
         if (!persisted.constellationNodes) persisted.constellationNodes = {};
         if (!persisted.constellationRevealed) persisted.constellationRevealed = {};
         if (!persisted.marketPrices) persisted.marketPrices = { food: 10, water: 8, materials: 15, science: 20, gold: 25, energy: 30 };
         if (!persisted.priceHistory) persisted.priceHistory = { food: [10], water: [8], materials: [15], science: [20], gold: [25], energy: [30] };
         if (!persisted.marketOwnedResources) persisted.marketOwnedResources = {};
         if (persisted.marketTickTimer === undefined) persisted.marketTickTimer = 10;
+        // FEATURE 3 — Market Crashes migration
+        if (persisted.marketCrashTimer === undefined) persisted.marketCrashTimer = 120;
+        if (persisted.marketCrashActive === undefined) persisted.marketCrashActive = false;
+        if (persisted.marketCrashDuration === undefined) persisted.marketCrashDuration = 0;
         if (!persisted.worldGrid) persisted.worldGrid = Array(20).fill(null);
         if (!persisted.worldGridSeeds) persisted.worldGridSeeds = Array(20).fill(null);
+        // FEATURE 4 — Natural Disasters migration
+        if (persisted.disasterTimer === undefined) persisted.disasterTimer = 90;
+        if (persisted.lastDisasterCell === undefined) persisted.lastDisasterCell = null;
+        if (persisted.lastDisasterAt === undefined) persisted.lastDisasterAt = 0;
         if (!persisted.followerGrid) persisted.followerGrid = Array.from({ length: 32 }, () => ({ state: "faithful", type: "follower" }));
         if (persisted.heresySpreadTimer === undefined) persisted.heresySpreadTimer = 10;
+        // FEATURE 5 — Prophets migration
+        if (!persisted.prophets) persisted.prophets = [];
+        if (persisted.prophetConvertTimer === undefined) persisted.prophetConvertTimer = 10;
         if (!persisted.dimensions) persisted.dimensions = [
           { id: 0, name: "Alpha", speed: 1, pop: 8, stageIndex: 0, resources: 0, reachedGalactic: false },
           { id: 1, name: "Beta", speed: 0.5, pop: 8, stageIndex: 0, resources: 0, reachedGalactic: false },
           { id: 2, name: "Gamma", speed: 0.25, pop: 8, stageIndex: 0, resources: 0, reachedGalactic: false },
         ];
         if (persisted.dimensionRiftTimer === undefined) persisted.dimensionRiftTimer = 60;
+
+        // v10 migration: FEATURE ENHANCEMENTS — L7 mutations (creature.mutated flag), L8 amplifiers, L9 temporal storms, L10 paradox
+        if (persisted.creatures) {
+          for (const c of persisted.creatures) {
+            if (c.mutated === undefined) c.mutated = false;
+          }
+        }
+        if (!persisted.amplifiers) persisted.amplifiers = [];
+        if (!persisted.temporalStorms) persisted.temporalStorms = {};
+        if (persisted.universeParadox === undefined) persisted.universeParadox = 0;
 
         // v9 migration: REBUILD L7-10 — new narrative (Bio-engineering, Divine Alliance, Divine War, Ascension)
         // Layer 7 — Creature Lab

@@ -39,6 +39,8 @@ export function SingularityModal() {
   const setDimensionSpeed = useGameStore((s) => s.setDimensionSpeed);
   const syncDimension = useGameStore((s) => s.syncDimension);
   const initDimensions = useGameStore((s) => s.initDimensions);
+  // FEATURE 6 — Dimension Collapses
+  const collapseDimensions = useGameStore((s) => s.collapseDimensions);
 
   const isUnlocked = !!unlockedLayers.singularity;
   const rb = relicBonus(equippedRelics);
@@ -97,13 +99,37 @@ export function SingularityModal() {
               </div>
               <div className="text-[0.65rem] text-muted-foreground mb-3">
                 Each dimension accrues resources & population at its own speed. Stage up costs 100 resources. Sync copies stage & 50% of population (costs 50 Divinity). Rift events transfer resources between dimensions every 60s.
+                <span className="text-violet-300"> Collapse</span> two dimensions of the same stage into one — combined speed & resources (costs 50 Divinity).
               </div>
+
+              {/* FEATURE 6 — Collapse hint banner */}
+              {dimensions.length >= 2 && (
+                <div className="rounded-md border border-violet-400/30 bg-violet-500/5 p-1.5 text-[0.6rem] text-violet-200 mb-2 flex items-center gap-1">
+                  <span className="text-base">🌌</span>
+                  <span className="flex-1">
+                    Collapse available for same-stage pairs:
+                    {dimensions.map((d) => {
+                      const matches = dimensions.filter((o) => o.id !== d.id && o.stageIndex === d.stageIndex && !o.reachedGalactic && !d.reachedGalactic);
+                      return matches.length > 0 ? (
+                        <span key={d.id} className="ml-1 px-1 rounded bg-violet-500/20 text-violet-200">
+                          {d.name} (stage {d.stageIndex})
+                        </span>
+                      ) : null;
+                    })}
+                    {dimensions.every((d) => !dimensions.some((o) => o.id !== d.id && o.stageIndex === d.stageIndex && !o.reachedGalactic && !d.reachedGalactic)) && (
+                      <span className="ml-1 text-muted-foreground">none yet — sync speeds first.</span>
+                    )}
+                  </span>
+                </div>
+              )}
 
               {/* Dimension panels — side by side */}
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
-                {dimensions.map((d, idx) => {
+                {dimensions.map((d) => {
                   const stage = STAGES[d.stageIndex];
                   const stageProgressPct = Math.min(100, (d.resources / 100) * 100);
+                  // FEATURE 6 — Collapse targets: other dimensions at the same stageIndex (and not reached galactic)
+                  const collapseTargets = dimensions.filter((o) => o.id !== d.id && o.stageIndex === d.stageIndex && !o.reachedGalactic && !d.reachedGalactic);
                   return (
                     <div
                       key={d.id}
@@ -177,6 +203,26 @@ export function SingularityModal() {
                             </button>
                           ))}
                         </div>
+                      )}
+
+                      {/* FEATURE 6 — Collapse buttons: merge this dimension into another at the same stage */}
+                      {!d.reachedGalactic && collapseTargets.length > 0 && (
+                        <>
+                          <div className="text-[0.55rem] uppercase text-muted-foreground mb-0.5 mt-1.5">Collapse into</div>
+                          <div className="grid grid-cols-2 gap-0.5">
+                            {collapseTargets.map((other) => (
+                              <button
+                                key={other.id}
+                                onClick={() => collapseDimensions(d.id, other.id)}
+                                disabled={divinity < 50}
+                                title={`Collapse ${d.name} into ${other.name} — combined speed & resources (50 Divinity)`}
+                                className="text-[0.55rem] py-1 rounded border border-rose-400/40 bg-rose-500/10 text-rose-200 hover:bg-rose-500/20 disabled:opacity-30 disabled:cursor-not-allowed"
+                              >
+                                ⤳ {other.name}
+                              </button>
+                            ))}
+                          </div>
+                        </>
                       )}
                     </div>
                   );

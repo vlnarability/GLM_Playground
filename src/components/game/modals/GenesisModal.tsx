@@ -103,6 +103,12 @@ export function GenesisModal() {
   const worldGridSeeds = useGameStore((s) => s.worldGridSeeds || Array(GRID_SIZE).fill(null));
   const placeGridTile = useGameStore((s) => s.placeGridTile);
   const resetWorldGrid = useGameStore((s) => s.resetWorldGrid);
+  // FEATURE 4 — Natural Disasters
+  const lastDisasterCell = useGameStore((s) => s.lastDisasterCell ?? null);
+  const lastDisasterAt = useGameStore((s) => s.lastDisasterAt || 0);
+  const gameTime = useGameStore((s) => s.time);
+  const disasterTimer = useGameStore((s) => s.disasterTimer || 0);
+  const disasterRecentlyHit = lastDisasterCell !== null && (gameTime - lastDisasterAt) < 0.7;
 
   const isUnlocked = !!unlockedLayers.genesis;
   const wProd = worldProductionMult(authoredWorlds);
@@ -172,7 +178,17 @@ export function GenesisModal() {
                 <Badge variant="outline" className="text-[0.6rem] text-amber-300 border-amber-400/40">{adjacencyCount} adjacencies (+{(adjacencyCount * 0.5).toFixed(1)}% prod)</Badge>
                 <Badge variant="outline" className="text-[0.6rem] text-pink-300 border-pink-400/40">{combos.length} combos (+{(combos.length * 5).toFixed(0)}% prod)</Badge>
                 <Badge variant="outline" className="text-[0.6rem] text-emerald-300 border-emerald-400/40">Grid total: +{(gridProductionBonus * 100).toFixed(1)}% prod</Badge>
+                {/* FEATURE 4 — Disaster countdown */}
+                <Badge variant="outline" className={`text-[0.6rem] ${disasterTimer < 10 ? "text-rose-300 border-rose-400/60" : "text-muted-foreground"}`}>
+                  🌋 next disaster roll in {Math.ceil(disasterTimer)}s
+                </Badge>
               </div>
+
+              {disasterRecentlyHit && lastDisasterCell !== null && (
+                <div className="rounded-md border border-rose-400/60 bg-rose-500/15 p-1.5 text-[0.65rem] text-rose-200 mb-2">
+                  ⚠ A natural disaster destroyed the tile on cell {lastDisasterCell + 1}. Rebuild it (click the empty cell to place a new tile).
+                </div>
+              )}
 
               {/* The 5×4 grid */}
               <div
@@ -184,25 +200,29 @@ export function GenesisModal() {
                   const seed = worldGridSeeds[i];
                   const tile = tileId ? TILE_MAP[tileId] : null;
                   const inCombo = combos.some((c) => c.cells.includes(i));
+                  // FEATURE 4 — disaster flash on the recently-destroyed cell
+                  const isDisasterFlash = disasterRecentlyHit && lastDisasterCell === i;
                   return (
                     <button
                       key={i}
                       disabled={tileId !== null}
                       onClick={() => placeGridTile(i, activeTile)}
                       className={`relative aspect-square rounded-md border flex items-center justify-center transition-all
-                        ${tile
-                          ? `${tile.color} ${inCombo ? "ring-2 ring-pink-400/60" : ""}`
-                          : seed
-                            ? "border-violet-400/40 bg-violet-500/10 hover:border-violet-400/70"
-                            : "border-muted-foreground/20 bg-muted/10 hover:border-emerald-400/40 hover:bg-emerald-500/5"
+                        ${isDisasterFlash
+                          ? "border-rose-400/60 bg-rose-500/20 disaster-flash"
+                          : tile
+                            ? `${tile.color} ${inCombo ? "ring-2 ring-pink-400/60" : ""}`
+                            : seed
+                              ? "border-violet-400/40 bg-violet-500/10 hover:border-violet-400/70"
+                              : "border-muted-foreground/20 bg-muted/10 hover:border-emerald-400/40 hover:bg-emerald-500/5"
                         }
                       `}
-                      title={tile ? `${tile.name} — ${tile.bonus}` : seed ? "Dormant seed — place next to it" : "Empty — click to place"}
+                      title={isDisasterFlash ? "Disaster struck here — rebuild!" : tile ? `${tile.name} — ${tile.bonus}` : seed ? "Dormant seed — place next to it" : "Empty — click to place"}
                     >
                       <span className="text-2xl">
-                        {tile ? tile.icon : seed ? "✨" : ""}
+                        {isDisasterFlash ? "💥" : tile ? tile.icon : seed ? "✨" : ""}
                       </span>
-                      {inCombo && (
+                      {inCombo && !isDisasterFlash && (
                         <span className="absolute -top-1 -right-1 text-[0.6rem] text-pink-300">★</span>
                       )}
                     </button>

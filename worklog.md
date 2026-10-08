@@ -1820,3 +1820,180 @@ Replaced Testament Clauses/Canonizations/Weaves with **Universe Creation** data:
 3. **Tune relationship gain rates**: Negotiate +5 might be too slow or too fast. The 2-alliance unlock threshold for Layer 9 means players need ~2×12 = 24 negotiates minimum if starting at 30 (Aurelia) and 5 (Veska). Verify this feels right.
 4. **Wire Divine Fragment display in Header** — currently the fragment count only shows in the InfinityModal and PrestigeTab. Could add a Header stat badge for the +5%×N production bonus visibility.
 5. **Add combat weakness hint UI** — currently the Old God's `weakness` field is shown in their card text, but the UI doesn't visually highlight when the player has deployed the matching body type. Could add a "Bonus damage active!" callout.
+
+---
+
+# FEATURES: Leaderboards + All 10 Layer Enhancements
+
+**Task ID**: FEATURES
+**Scope**: Add no-login local leaderboards for trial realms, plus one enhancement per prestige layer (L2–L10). Each enhancement adds ONE mechanical change + ONE visual element, kept simple and self-contained.
+
+## Summary of Changes
+
+### src/game/state/types.ts (+18 fields, +8 actions)
+Added state fields for all 10 features:
+- `trialRealmBestTimes: Record<string, number>` — FEATURE 1 local leaderboard (no login).
+- `marketCrashTimer / marketCrashActive / marketCrashDuration` — FEATURE 3.
+- `disasterTimer / lastDisasterCell / lastDisasterAt` — FEATURE 4.
+- `prophets: Array<{ cellIndex, lastConvertedAt }> + prophetConvertTimer` — FEATURE 5.
+- `amplifiers: Array<{ id, godId }>` — FEATURE 8.
+- `temporalStorms: Record<string, boolean>` — FEATURE 9 (per Old God).
+- `universeParadox: number` — FEATURE 10.
+
+Added 8 new actions on `GameStore`:
+- `collapseDimensions(fromId, toId)` — FEATURE 6.
+- `placeProphet(cellIndex) / removeProphet(cellIndex)` — FEATURE 5.
+- `placeAmplifier(godId) / removeAmplifier(godId)` — FEATURE 8.
+- `stabilizeTime(oldGodId)` — FEATURE 9.
+- `resolveParadox()` — FEATURE 10.
+
+### src/game/data/trialRealms.ts (+1 field)
+- Added `startedAt: 0` to `realm_discontent` default state (was already present on `realm_growth` and `realm_swiftness`). Used by FEATURE 1 to compute completion time.
+
+### src/game/data/omnipotence.ts (+2 fields on Creature, +1 line in instability calc)
+- Added `mutated?: boolean` and `mutatedStat?: "attack"|"defense"|"speed"` to the `Creature` interface.
+- `creatureInstabilityPerSec()` now multiplies by `1.2` when `creature.mutated` is true (+20% instability per FEATURE 7).
+
+### src/game/data/eternity.ts (+1 optional field, +3 new options)
+- Added `forbidden?: boolean` flag to `UniverseSlotOption`.
+- Added 3 forbidden options to the Physics, Magic, and Time slots (extremely powerful — +80% to +100% production at the cost of +1 Paradox each).
+
+### src/game/state/store.ts (extensive)
+**Initial state**: Added defaults for all new fields (`trialRealmBestTimes: {}`, `marketCrashTimer: 120`, `marketCrashActive: false`, `marketCrashDuration: 0`, `disasterTimer: 90`, `lastDisasterCell: null`, `lastDisasterAt: 0`, `prophets: []`, `prophetConvertTimer: 10`, `amplifiers: []`, `temporalStorms: {}`, `universeParadox: 0`).
+
+**Tick logic**:
+- FEATURE 1: Capture `tickRealmId` const at top of Layer 1 tick (avoids null-indexing when `activeTrialRealm` is reassigned to null on auto-close). Record best time on Discontent & Swiftness completion (only if faster than previous). Also set `st.startedAt = newTime - realDt` as migration safety.
+- FEATURE 1: `setActiveTrialRealm` now sets `realmState[realmId].startedAt = s.time` when realm becomes active.
+- FEATURE 1: `realmBreakthrough` now records best time on Growth completion.
+- FEATURE 3: Market crash logic in tick — `marketCrashTimer` decrements; at 0, 20% chance to start crash (duration=30s). During crash, all prices are forced to `BASE * 0.3`; random walk is paused. When crash ends, prices restored to base and timer reset to 120s.
+- FEATURE 4: Disaster logic in tick — `disasterTimer` decrements; at 0, 15% chance to destroy a random filled tile (not a Mountain and not adjacent to a Mountain). Sets `lastDisasterCell` + `lastDisasterAt` for visual flash.
+- FEATURE 5: Prophet conversion logic in tick — `prophetConvertTimer` decrements; at 0, each prophet converts ALL adjacent heretics to faithful. (Prophets array + followerGrid updated.)
+- FEATURE 7: `createCreature` now rolls 10% mutation chance; mutated creatures get ×1.5 to attack/defense/speed.
+- FEATURE 8: `negotiateWithGod` checks for amplifier on that god; doubles gain if present.
+- FEATURE 9: `attackOldGod` rolls 20% chance per turn to start a temporal storm; if active, randomly delays (×0.5) or accelerates (×1.5) the boss's attack back. Clears storm on win.
+- FEATURE 10: `setUniverseRule` tracks paradox delta (forbidden vs non-forbidden switch). If paradox reaches 3, resets all rules + paradox. Otherwise updates paradox counter.
+- New actions: `collapseDimensions`, `placeProphet`, `removeProphet`, `placeAmplifier`, `removeAmplifier`, `stabilizeTime`, `resolveParadox`.
+
+**Migration** (v8 + v10 additions):
+- v8 expanded with `trialRealmBestTimes`, `marketCrashTimer/Active/Duration`, `disasterTimer/lastDisasterCell/lastDisasterAt`, `prophets`, `prophetConvertTimer`.
+- v10 new: `amplifiers: []`, `temporalStorms: {}`, `universeParadox: 0`, plus `mutated = false` defaulted on existing creatures.
+
+**Tick `set({...})` patch**: Added all new state fields to the closing `set()` call so they persist on tick.
+
+### src/app/globals.css (+8 keyframe/class blocks)
+Added 7 subtle (300–500ms) animation classes for layer-specific visual effects:
+- `@keyframes supernova-flash` + `.supernova-flash` — bright yellow burst on illuminated nodes (450ms).
+- `@keyframes black-hole-collapse` + `.black-hole-collapse` — scale + fade into a dark point (500ms, `forwards`).
+- `@keyframes disaster-flash` + `.disaster-flash` — red shake on destroyed tile (400ms).
+- `@keyframes prophet-glow` + `.prophet-glow` — golden pulsing aura on prophet cells (1.8s infinite).
+- `@keyframes mutation-aura` + `.mutation-aura` — purple pulsing ring on mutated creatures (2s infinite).
+- `@keyframes amplifier-pulse` + `.amplifier-pulse` — sky-blue glow on amplifier-placed god cards (1.5s infinite).
+- `@keyframes temporal-storm-overlay` + `.temporal-storm-overlay` — blue/purple shimmer over battle card (2.2s infinite).
+- `@keyframes forbidden-pulse` + `.forbidden-pulse` — red pulsing border on forbidden options (1.4s infinite).
+
+### src/components/game/modals/ChallengeModal.tsx (FEATURE 1)
+- Subscribed to `trialRealmBestTimes` + `time` (for live timer tick).
+- Added `formatBestTime()` helper ("Xm Ys").
+- Each realm card shows "Best: Xm Ys" badge if a best time exists.
+- Currently active realm shows a pulsing "Time: Xs" badge (live updates every tick).
+- `ActiveRealmView` now accepts a `liveElapsed` prop and displays it in the realm header.
+
+### src/components/game/modals/EnlightenmentModal.tsx (FEATURE 2)
+- Imported `useState` + `useCallback` from React.
+- Local state `flashedNodes: Set<string>` and `collapsingNodes: Set<string>`.
+- `triggerSupernova()` computes affected node IDs (target + orthogonal neighbors), calls store action, sets `flashedNodes`, auto-clears after 500ms.
+- `triggerBlackHole()` captures currently-illuminated node IDs, calls store action, sets `collapsingNodes`, auto-clears after 550ms.
+- Node buttons apply `supernova-flash` class when in `flashedNodes`, and `black-hole-collapse` class when in `collapsingNodes`.
+- Removed unused `idx` param from `FORESIGHT_NODES.map((n, idx) => ...)`.
+
+### src/components/game/modals/TranscendenceModal.tsx (FEATURE 3)
+- Subscribed to `marketCrashActive`, `marketCrashDuration`, `marketCrashTimer`.
+- When crash active: red animated banner "⚠ MARKET CRASH! All prices dropped to 30% of base — buy now to profit on recovery." with countdown badge.
+- When inactive: muted info banner showing countdown to next crash check ("Next market crash check in Xs (20% chance)").
+
+### src/components/game/modals/GenesisModal.tsx (FEATURE 4)
+- Subscribed to `lastDisasterCell`, `lastDisasterAt`, `time`, `disasterTimer`.
+- Computed `disasterRecentlyHit` flag (within 0.7s of last disaster).
+- Added "🌋 next disaster roll in Xs" badge in stats row (turns red when ≤10s).
+- When `disasterRecentlyHit`, shows a red warning message + applies `disaster-flash` class to the destroyed cell with a 💥 icon overlay.
+
+### src/components/game/modals/ApotheosisModal.tsx (FEATURE 5)
+- Imported `useState` and `Sparkles` icon.
+- Subscribed to `prophets`, `placeProphet`, `removeProphet`, `prophetConvertTimer`.
+- Added local state `placingProphet` (mode toggle).
+- New amber-bordered "Prophets" panel: shows count "X/2 placed · converts in Xs", explains the mechanic, and has a "Place Prophet (50 Div)" button (disabled if max reached or divinity < 50).
+- Grid cells now check `cell.type === "prophet"` (or prophets array); render with 🌟 icon, `prophet-glow` CSS class, amber border, and an inline ✕ button to remove the prophet.
+- Clicking a cell while `placingProphet` is true places a prophet there (then exits placement mode).
+- Cell cursor changes to `pointer` while in placement mode.
+
+### src/components/game/modals/SingularityModal.tsx (FEATURE 6)
+- Subscribed to `collapseDimensions` action.
+- Added collapse hint banner showing which dimensions currently have same-stage collapse targets.
+- Each dimension panel computes `collapseTargets` (other dimensions at the same `stageIndex` and not reached galactic).
+- If targets exist, shows "Collapse into" section with buttons for each target ("⤳ OtherName"). Disabled if divinity < 50.
+- Removed unused `idx`/`i` params from map callbacks.
+
+### src/components/game/modals/OmnipotenceModal.tsx (FEATURE 7)
+- Imported `Sparkles` icon.
+- Added "10% mutation chance" badge + explanatory text in the Creation Lab header.
+- Each creature card now checks `c.mutated`; if true, applies `mutation-aura` CSS class + violet border, and shows a "MUTATED (stat)" badge. The stat shown is `c.mutatedStat`.
+
+### src/components/game/modals/DivinityLayerModal.tsx (FEATURE 8)
+- Imported `Radio` icon.
+- Subscribed to `amplifiers`, `placeAmplifier`, `removeAmplifier`.
+- Added "X/3 amplifiers" badge in section header + explanatory text.
+- Each god card checks if an amplifier is placed on that god; if so, applies `amplifier-pulse` CSS class + sky-blue ring.
+- Negotiate button shows doubled gain when amplifier is active ("+10 ×2" instead of "+5").
+- Each god card has a "Place Amplifier (30 Div)" / "Remove Amplifier" button below the action row.
+
+### src/components/game/modals/InfinityModal.tsx (FEATURE 9)
+- Imported `Clock` and `Sparkles` icons.
+- Subscribed to `temporalStorms` and `stabilizeTime`.
+- Each Old God card checks `temporalStorms[god.id]`; if active:
+  - Adds `temporal-storm-overlay` CSS class with absolute-positioned overlay div.
+  - Shows a "Temporal Storm" badge (violet, pulsing).
+  - Shows an inline violet banner explaining the effect + a "⏳ Stabilize (1 Fragment)" button (disabled if divineFragments < 1).
+- Storms clear automatically on battle victory (handled in store).
+
+### src/components/game/modals/EternityModal.tsx (FEATURE 10)
+- Imported `AlertTriangle` icon.
+- Subscribed to `universeParadox`, `divinity`, `resolveParadox`.
+- Section header now shows a "Paradox: X/3" badge (turns red + pulsing at ≥2) + a "✦ Resolve (100 Div)" button (disabled if paradox is 0 or divinity < 100).
+- When paradox ≥ 2, shows a red warning banner explaining the overload risk.
+- Each slot option that has `forbidden: true` renders with red text, "⚠" suffix, `forbidden-pulse` border when selected, and "Forbidden" badge in the slot header when a forbidden option is chosen.
+
+## Verification
+
+- `bun run lint`: **0 errors, 6 warnings** (all pre-existing in `upload/logic.js` vanilla JS reference file, untouched).
+- `bunx tsc --noEmit`: 4 pre-existing project errors (unchanged from prior PR — ChallengeModal ChallengeEffects→Record at lines 233/238, stages.ts Record<StageId> at line 125, store.ts Partial+GameStore mismatch at line 420). The 2 NEW null-index errors I introduced on lines 1383/1386/1388 were fixed by introducing `const tickRealmId = s.activeTrialRealm` at the top of the Layer 1 tick (using `tickRealmId!` for safe indexing inside the switch where `activeTrialRealm` may be reassigned to null on auto-close). Plus 4 unrelated errors in `examples/websocket/*` and `skills/*` (not my code).
+- `curl -s -o /dev/null -w "%{http_code}" http://localhost:3000/`: **HTTP 200** (dev server compiles cleanly).
+- Smoke test: page renders the game shell successfully.
+
+## Notes / Design Decisions
+
+1. **FEATURE 1 (Leaderboards)**: Local only — `trialRealmBestTimes` is persisted via Zustand `persist` middleware to localStorage. No server, no login, no account. Best time is recorded only if faster than previous (or first completion). Live timer ticks every game-tick (~1Hz) since the modal subscribes to `s.time`.
+
+2. **FEATURE 2 (Visual effects)**: Implemented as purely local React state in the modal (`flashedNodes` / `collapsingNodes` Sets), cleared via `setTimeout` after the animation duration. This avoids polluting the global store with transient animation state. Supernova's "free illumination of adjacent" already existed in the store action; this PR only adds the visual flash. Black Hole's "consume one node" interpretation: kept the existing "refund 50% & reset all" mechanic (the spec called this an enhancement, not a redesign — "already exists" wording). The collapse animation runs on all currently-illuminated nodes before they're cleared from the store.
+
+3. **FEATURE 3 (Market Crashes)**: During a crash, the random-walk price update is paused; prices are continuously forced to `BASE * 0.3` each tick (which is idempotent — same value). When crash ends, prices are restored to BASE and random walk resumes. The 20% chance is rolled once per 120s window (not per tick) to avoid excessive crashes.
+
+4. **FEATURE 4 (Disasters)**: Vulnerable cells = filled tiles that aren't Mountains and aren't adjacent to a Mountain (mountains are sturdy and protect their neighbors). Only one tile destroyed per disaster roll (90s cycle). Player can rebuild by placing a new tile (which uses the existing `placeGridTile` action — no special "rebuild" action needed).
+
+5. **FEATURE 5 (Prophets)**: Max 2 prophets at a time. Costs 50 Divinity each. Prophet conversion happens every 10s (independent timer `prophetConvertTimer`). Prophet cells store their position via the `prophets` array AND tagged in the followerGrid (`type: "prophet"`) for visual identification. Removing a prophet converts the cell back to a normal faithful follower.
+
+6. **FEATURE 6 (Dimension Collapse)**: Collapse requires both dimensions to have the same `stageIndex` (and neither reached Galactic). Cost: 50 Divinity (matches Sync). Merges speed + resources + pop into target dimension, removes source dimension. Strategic tradeoff: more speed & resources vs. fewer parallel timelines.
+
+7. **FEATURE 7 (Mutations)**: 10% mutation chance rolls on creature creation. Mutated creatures get ×1.5 to ALL three stats (attack, defense, speed) — "50% more powerful". Instability contribution is ×1.2 ("+20% to genetic instability") via `creatureInstabilityPerSec`. The `mutatedStat` field records which stat was conceptually randomized, though the implementation randomizes all three (cleaner & matches "50% more powerful" better than per-stat randomization).
+
+8. **FEATURE 8 (Amplifiers)**: Max 3 amplifiers at a time. Costs 30 Divinity each (cheaper than Prophet since relationship gain is more incremental). Each amplifier is god-specific (one per god max). Visual: `amplifier-pulse` CSS class on the god card + sky-blue ring.
+
+9. **FEATURE 9 (Temporal Storms)**: 20% chance per `attackOldGod` call (turn-based, not phase-based — simpler implementation). Storm persists across turns until cleared by victory or "Stabilize Time" (costs 1 Divine Fragment). Each turn during a storm, the boss's retaliatory damage is randomly ×0.5 (delayed) or ×1.5 (accelerated). Doesn't affect player damage to keep the player's strategy intact.
+
+10. **FEATURE 10 (Forbidden Words)**: 3 of 8 slots have a forbidden option (Physics, Magic, Time). Forbidden options add +1 Paradox each; at 3 Paradox, the universe creation resets (all rules cleared, paradox zeroed). "Resolve Paradox" button costs 100 Divinity and reduces paradox by 1 — gives players a safety valve if they need just one forbidden option. The `forbidden` flag is stored on the option definition, not the chosen rule — so switching slots between forbidden and non-forbidden correctly adjusts paradox.
+
+## Next Actions / Risks
+
+1. **Playtest each layer end-to-end** to confirm all 10 features fire correctly and don't conflict with each other (especially Layer 4 disasters + Layer 5 prophet conversion running in the same tick).
+2. **Tune timing**: Market crash (120s/30s), disaster (90s), prophet conversion (10s) — all arbitrarily chosen. May need adjustment based on playtest feedback.
+3. **Temporal Storm visual**: The `temporal-storm-overlay` is a radial gradient on an absolutely-positioned div. May need z-index tweaking if it interferes with the battle log scroll.
+4. **FEATURE 1 leaderboard UI** could be expanded with a sorted top-3 list per realm in the future, but the spec only asked for "Best: Xm Ys" next to each realm, which is what's implemented.
