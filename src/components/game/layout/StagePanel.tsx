@@ -23,6 +23,7 @@ export function StagePanel() {
   const archetypeAffinity = useGameStore((s) => s.archetypeAffinity);
   const lockedArchetype = useGameStore((s) => s.lockedArchetype);
   const galacticWins = useGameStore((s) => s.galacticWins);
+  const totalRuns = useGameStore((s) => s.totalRuns);
 
   const [showPopInfo, setShowPopInfo] = useState(false);
   const [showArchInfo, setShowArchInfo] = useState(false);
@@ -37,8 +38,7 @@ export function StagePanel() {
   const popPct = Math.min(100, (population / (reqs.minPopulation * evolveBoost)) * 100);
   const sysPct = Math.min(100, (totalSystems / (reqs.minSystems * evolveBoost)) * 100);
   const techPct = Math.min(100, (totalTech / (reqs.minTech * evolveBoost)) * 100);
-  const scorePct = Math.min(100, (score / (reqs.minScore * evolveBoost)) * 100);
-  const canEvolve = popPct >= 100 && sysPct >= 100 && techPct >= 100 && scorePct >= 100;
+  const canEvolve = popPct >= 100 && sysPct >= 100 && techPct >= 100;
 
   // Archetype drift
   const hasAffinity = Object.values(archetypeAffinity).some((v) => v > 0);
@@ -71,6 +71,16 @@ export function StagePanel() {
             <p className="text-xs text-muted-foreground italic mt-0.5">{stage.tagline}</p>
           </div>
         </div>
+        {/* Auto-running indicator — shown after first Galactic win (Part 2b) */}
+        {galacticWins >= 1 && (
+          <div className="mt-2 flex items-center gap-1.5 text-[0.65rem] px-2 py-1 rounded-md border border-emerald-400/30 bg-emerald-500/10 text-emerald-300">
+            <span className="inline-block">🔄</span>
+            <span>Auto-running — base game progresses on its own.</span>
+            <Badge variant="outline" className="ml-auto text-[0.55rem] text-emerald-300 border-emerald-400/40 px-1 py-0">
+              {(1 + (totalRuns || 0) * 0.5).toFixed(1)}× speed
+            </Badge>
+          </div>
+        )}
       </div>
 
       {/* Stage art panel — less glowy, more like a specimen plate */}
@@ -134,8 +144,8 @@ export function StagePanel() {
         )}
       </div>
 
-      {/* Stats grid (3 — systems/tech/score) */}
-      <div className="grid grid-cols-3 gap-2 mb-3">
+      {/* Stats grid (2 — systems/tech) */}
+      <div className="grid grid-cols-2 gap-2 mb-3">
         <MiniStat
           icon={<Sparkles className="w-3 h-3" />}
           label="Systems"
@@ -149,13 +159,6 @@ export function StagePanel() {
           value={formatNumber(totalTech, 0)}
           ok={totalTech >= reqs.minTech * evolveBoost}
           need={formatNumber(reqs.minTech * evolveBoost, 0)}
-        />
-        <MiniStat
-          icon={<Star className="w-3 h-3" />}
-          label="Score"
-          value={formatNumber(score, 0)}
-          ok={score >= reqs.minScore * evolveBoost}
-          need={formatNumber(reqs.minScore * evolveBoost, 0)}
         />
       </div>
 
@@ -242,7 +245,6 @@ export function StagePanel() {
         <ProgressRow label="Population" pct={popPct} color="bg-cyan-400" />
         <ProgressRow label="Systems" pct={sysPct} color="bg-violet-400" />
         <ProgressRow label="Tech" pct={techPct} color="bg-amber-400" />
-        <ProgressRow label="Score" pct={scorePct} color="bg-emerald-400" />
       </div>
 
       <Button
@@ -256,7 +258,7 @@ export function StagePanel() {
       </Button>
       {!canEvolve && (
         <p className="text-xs text-muted-foreground mt-1 text-center">
-          Complete all four requirements to evolve
+          Complete all three requirements to evolve
         </p>
       )}
       {canEvolve && (

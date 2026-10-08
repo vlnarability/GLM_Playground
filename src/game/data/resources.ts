@@ -62,8 +62,16 @@ export function emptyResources(): Record<string, number> {
 
 export function emptyCapacities(): Record<string, number> {
   const obj: Record<string, number> = {};
-  RESOURCES.forEach((r) => (obj[r.id] = 50));
-  obj.atp = 30;
-  obj.happiness = 100;
+  // Primary resources: 3x base capacity (150) for early stages to prevent frequent cap-overflow deadlocks.
+  RESOURCES.forEach((r) => {
+    if (r.category === "primary") {
+      obj[r.id] = 150;
+    } else {
+      // Divinity + meta currencies stay at their original small caps
+      obj[r.id] = 50;
+    }
+  });
+  obj.atp = 90; // 3x the previous 30 — ATP is a small-pool primary
+  obj.happiness = 100; // happiness stays at 100 (it's a 0-100 mood meter, not a stockpile)
   return obj;
 }

@@ -17,6 +17,7 @@ import { CodexTab } from "../tabs/CodexTab";
 import { AchievementsTab } from "../tabs/AchievementsTab";
 import { ArchiveTab } from "../tabs/ArchiveTab";
 import { LogTab } from "../tabs/LogTab";
+import { PrestigeTab } from "../tabs/PrestigeTab";
 import { ShopModal } from "../modals/ShopModal";
 import { EvolveModal } from "../modals/EvolveModal";
 import { StoryPopup } from "../modals/StoryPopup";
@@ -25,7 +26,18 @@ import { OfflineSummary } from "../modals/OfflineSummary";
 import { SettingsModal } from "../modals/SettingsModal";
 import { EventModal } from "../modals/EventModal";
 import { StageTransition } from "../modals/StageTransition";
+import { ChallengeModal } from "../modals/ChallengeModal";
+import { EnlightenmentModal } from "../modals/EnlightenmentModal";
+import { TranscendenceModal } from "../modals/TranscendenceModal";
+import { GenesisModal } from "../modals/GenesisModal";
+import { ApotheosisModal } from "../modals/ApotheosisModal";
+import { SingularityModal } from "../modals/SingularityModal";
+import { OmnipotenceModal } from "../modals/OmnipotenceModal";
+import { DivinityLayerModal } from "../modals/DivinityLayerModal";
+import { InfinityModal } from "../modals/InfinityModal";
+import { EternityModal } from "../modals/EternityModal";
 import { TutorialHints } from "./TutorialHints";
+import { cn } from "@/lib/utils";
 
 export function GameShell() {
   const { offlineSummary, dismissOffline } = useGameLoop();
@@ -34,8 +46,21 @@ export function GameShell() {
   const stageIndex = useGameStore((s) => s.stageIndex);
   const stage = STAGES[stageIndex];
 
+  // Theme state — apply CSS classes to the root div.
+  // Special overrides everything; otherwise stage + optional layer overlay.
+  const activeStageTheme = useGameStore((s) => s.activeStageTheme || "stage-cell");
+  const activeLayerTheme = useGameStore((s) => s.activeLayerTheme);
+  const activeSpecialTheme = useGameStore((s) => s.activeSpecialTheme);
+
+  const themeClass = [
+    activeSpecialTheme
+      ? `theme-${activeSpecialTheme}`
+      : `theme-${activeStageTheme}`,
+    activeLayerTheme && !activeSpecialTheme ? `theme-${activeLayerTheme}` : "",
+  ].filter(Boolean).join(" ");
+
   return (
-    <div className="min-h-screen flex flex-col">
+    <div className={cn("min-h-screen flex flex-col", themeClass)}>
       {/* Background layers */}
       <div className="bg-layer-1" />
       <div className="bg-layer-2" />
@@ -64,6 +89,7 @@ export function GameShell() {
               {currentTab === "codex" && <CodexTab />}
               {currentTab === "achievements" && <AchievementsTab />}
               {currentTab === "archive" && <ArchiveTab />}
+              {currentTab === "prestige" && <PrestigeTab />}
               {currentTab === "log" && <LogTab />}
             </div>
           </div>
@@ -78,6 +104,16 @@ export function GameShell() {
       <SettingsModal />
       <EventModal />
       <StageTransition />
+      <ChallengeModal />
+      <EnlightenmentModal />
+      <TranscendenceModal />
+      <GenesisModal />
+      <ApotheosisModal />
+      <SingularityModal />
+      <OmnipotenceModal />
+      <DivinityLayerModal />
+      <InfinityModal />
+      <EternityModal />
       <TutorialHints />
       {offlineSummary && (
         <OfflineSummary

@@ -254,6 +254,100 @@ export const STORY_ENTRIES: StoryEntry[] = [
     trigger: "Research Ascension Theory",
     category: "milestone",
   },
+  {
+    id: "enlightenment_unlocked",
+    title: "The Eye Opens",
+    body: "Three trials mastered. The god opens its eyes for the second time — not as a child of matter, " +
+      "but as a sovereign of memory. The first Foresight is inscribed: a permanent truth, written in light.",
+    stage: "meta",
+    layer: "Enlightenment",
+    trigger: "Master 3 trials (Layer 2 unlocked)",
+    category: "layer",
+  },
+  {
+    id: "transcendence_unlocked",
+    title: "Form Becomes Optional",
+    body: "Ten truths inscribed. The god steps out of the last of its clay. Form is no longer required — " +
+      "it is now a garment, taken on or set aside at will. The first offering is poured; the first ritual begins.",
+    stage: "meta",
+    layer: "Transcendence",
+    trigger: "Inscribe 10 Foresight nodes (Layer 3 unlocked)",
+    category: "layer",
+  },
+  {
+    id: "genesis_unlocked",
+    title: "A Universe of One's Own",
+    body: "Four pacts sworn. The god learns what it costs to shape a cosmos: a piece of the self, " +
+      "given freely. Now a new universe waits — not yet born, but already dreaming.",
+    stage: "meta",
+    layer: "Genesis",
+    trigger: "Perform all 4 Blood Pacts (Layer 4 unlocked)",
+    category: "layer",
+  },
+  {
+    id: "apotheosis_unlocked",
+    title: "The Throne of Thrones",
+    body: "A world has been authored. The first law of the new cosmos is spoken: there shall be gods. " +
+      "And the god who spoke it takes its seat upon the throne of thrones — and learns what it costs to rule.",
+    stage: "meta",
+    layer: "Apotheosis",
+    trigger: "Author a world config (Layer 5 unlocked)",
+    category: "layer",
+  },
+  {
+    id: "singularity_unlocked",
+    title: "All Paths Converge",
+    body: "Three laws enacted. The throne is no longer a seat but a point — a singularity where every choice " +
+      "the god ever made arrives at once. Time collapses to a single luminous instant. The play is ending. The play begins.",
+    stage: "meta",
+    layer: "Singularity",
+    trigger: "Enact 3 Divine Laws (Layer 6 unlocked)",
+    category: "layer",
+  },
+  {
+    id: "omnipotence_unlocked",
+    title: "Two Souls in One Body",
+    body: "Three logic cores hum in unison. The god, looking down at its many selves, wonders: what if two of them " +
+      "could be one? What if the predator and the nurturer, the deep and the winged, could share a single throne? " +
+      "Omnipotence begins in this dangerous question. Instability is the price.",
+    stage: "meta",
+    layer: "Omnipotence",
+    trigger: "Activate 3+ Logic Cores (Layer 7 unlocked)",
+    category: "layer",
+  },
+  {
+    id: "divinity_unlocked",
+    title: "The Prayer Becomes a River",
+    body: "Instability climbs. The hybrid god, stretched between two natures, learns a new shape of devotion: not faith " +
+      "poured upward, but prayer drawn inward. The population itself becomes a chant. Each soul a note. The god puts on " +
+      "a mask, chooses a polarity, and begins to listen to itself pray.",
+    stage: "meta",
+    layer: "Divinity",
+    trigger: "Peak instability ≥ 80 (Layer 8 unlocked)",
+    category: "layer",
+  },
+  {
+    id: "infinity_unlocked",
+    title: "The Loop Closes",
+    body: "Three channels sing. A polarity is set. The god, suddenly, remembers everything that has not yet happened — " +
+      "every run still to come, every fork not yet walked, every debt not yet owed. Infinity is the moment the loop " +
+      "closes back on itself, and the god becomes its own ancestor.",
+    stage: "meta",
+    layer: "Infinity",
+    trigger: "3+ Prayer channels + polarity chosen (Layer 9 unlocked)",
+    category: "layer",
+  },
+  {
+    id: "eternity_unlocked",
+    title: "And the Play Begins Again",
+    body: "All forks resolved. All debts repaid. The god sits at the end of every road at once and discovers the last " +
+      "secret of the ten ages: there was never a destination, only the journey. Eternity is not a length. " +
+      "It is the choice to begin again — or to hold the moment forever.",
+    stage: "meta",
+    layer: "Eternity",
+    trigger: "All forks + all debt repaid (Layer 10 unlocked)",
+    category: "layer",
+  },
 ];
 
 export const STORY_MAP: Record<string, StoryEntry> = Object.fromEntries(
@@ -289,6 +383,16 @@ export const STORY_TRIGGERS: StoryTrigger[] = [
   { id: "first_colony", condition: (s) => !!s.ownedSystems?.["colony_ship"] },
   // Galactic stage
   { id: "ascension_researched", condition: (s) => !!s.technologies?.["ascension_theory"] },
+  // Layer unlock stories (Layers 2-6)
+  { id: "enlightenment_unlocked", condition: (s) => !!s.unlockedLayers?.enlightenment },
+  { id: "transcendence_unlocked", condition: (s) => !!s.unlockedLayers?.transcendence },
+  { id: "genesis_unlocked", condition: (s) => !!s.unlockedLayers?.genesis },
+  { id: "apotheosis_unlocked", condition: (s) => !!s.unlockedLayers?.apotheosis },
+  { id: "singularity_unlocked", condition: (s) => !!s.unlockedLayers?.singularity },
+  { id: "omnipotence_unlocked", condition: (s) => !!s.unlockedLayers?.omnipotence },
+  { id: "divinity_unlocked", condition: (s) => !!s.unlockedLayers?.divinity },
+  { id: "infinity_unlocked", condition: (s) => !!s.unlockedLayers?.infinity },
+  { id: "eternity_unlocked", condition: (s) => !!s.unlockedLayers?.eternity },
 ];
 
 function totalSystems(s: any): number {

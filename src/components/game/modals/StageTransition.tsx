@@ -38,7 +38,7 @@ export function StageTransition() {
   const prevStageDef = STAGES[transitionStage - 1];
 
   return (
-    <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 overflow-hidden">
+    <div className="fixed inset-0 z-[80] flex items-center justify-center p-4 overflow-hidden">
       {/* Backdrop with stage gradient */}
       <div
         className="absolute inset-0 transition-opacity duration-500"
@@ -111,7 +111,7 @@ export function StageTransition() {
         </div>
 
         {/* Continue button */}
-        <div>
+        <div className="pointer-events-auto">
           <Button
             size="lg"
             onClick={() => {

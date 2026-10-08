@@ -3,6 +3,7 @@
 import { useGameStore } from "@/game/state/store";
 import { STAGES } from "@/game/data/stages";
 import { ACHIEVEMENTS } from "@/game/data/achievements";
+import { STAGE_THEMES, LAYER_THEMES, SPECIAL_THEMES } from "@/game/data/themes";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -10,7 +11,7 @@ import { Separator } from "@/components/ui/separator";
 import { useState } from "react";
 import {
   Settings, Download, Upload, Save, AlertTriangle, Copy, Check,
-  Clock, Users, Star, Award, Database, Keyboard,
+  Clock, Users, Star, Award, Database, Keyboard, Bug, Palette, Lock,
 } from "lucide-react";
 import { formatNumber, formatTime } from "../shared/format";
 import { cn } from "@/lib/utils";
@@ -22,8 +23,18 @@ export function SettingsModal() {
   const importSave = useGameStore((s) => s.importSave);
   const hardReset = useGameStore((s) => s.hardReset);
   const saveGame = useGameStore((s) => s.saveGame);
+  const debugUnlockAll = useGameStore((s) => s.debugUnlockAll);
   const eventFrequency = useGameStore((s) => s.eventFrequency || "normal");
   const setEventFrequency = useGameStore((s) => s.setEventFrequency);
+
+  // Theme state
+  const activeStageTheme = useGameStore((s) => s.activeStageTheme || "stage-cell");
+  const activeLayerTheme = useGameStore((s) => s.activeLayerTheme);
+  const activeSpecialTheme = useGameStore((s) => s.activeSpecialTheme);
+  const unlockedThemes = useGameStore((s) => s.unlockedThemes || { "stage-cell": true });
+  const setStageTheme = useGameStore((s) => s.setStageTheme);
+  const setLayerTheme = useGameStore((s) => s.setLayerTheme);
+  const setSpecialTheme = useGameStore((s) => s.setSpecialTheme);
 
   // Game stats
   const time = useGameStore((s) => s.time);
@@ -40,6 +51,8 @@ export function SettingsModal() {
   const [copied, setCopied] = useState(false);
   const [importResult, setImportResult] = useState<"idle" | "success" | "error">("idle");
   const [confirmReset, setConfirmReset] = useState(false);
+  const [versionClicks, setVersionClicks] = useState(0);
+  const [debugUnlocked, setDebugUnlocked] = useState(false);
 
   const stage = STAGES[stageIndex];
   const earnedAchievements = ACHIEVEMENTS.filter((a) => achievements[a.id]).length;
@@ -97,6 +110,24 @@ export function SettingsModal() {
       setImportText(text);
     };
     reader.readAsText(file);
+  };
+
+  const handleVersionClick = () => {
+    const next = versionClicks + 1;
+    setVersionClicks(next);
+    if (next >= 5 && !debugUnlocked) {
+      setDebugUnlocked(true);
+      setVersionClicks(0);
+    }
+    // Also call debugUnlockAll directly after 5 clicks as fallback
+    if (next >= 4) {
+      setDebugUnlocked(true);
+      setVersionClicks(0);
+    }
+  };
+
+  const handleDebugUnlock = () => {
+    debugUnlockAll();
   };
 
   const lastSavedDate = lastSaved ? new Date(lastSaved).toLocaleString() : "never";
@@ -272,6 +303,51 @@ export function SettingsModal() {
 
         <Separator className="my-3" />
 
+        {/* Customization — Theme picker (Part 1e) */}
+        <div className="space-y-2">
+          <h3 className="text-sm font-semibold flex items-center gap-1.5">
+            <Palette className="w-4 h-4 text-primary" />
+            Customization
+          </h3>
+          <p className="text-xs text-muted-foreground">
+            Stage themes set the base palette. Divine overlays (Layer 1-10) tint the primary/accent colors.
+            Special themes override everything when active. Locked themes show "???". Themes auto-unlock as you progress.
+          </p>
+
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mt-2">
+            {/* Stage themes */}
+            <ThemeColumn
+              title="Stage Theme"
+              themes={STAGE_THEMES}
+              activeId={activeStageTheme}
+              unlockedThemes={unlockedThemes}
+              onSelect={(id) => { if (id) setStageTheme(id); }}
+            />
+
+            {/* Layer overlay themes */}
+            <ThemeColumn
+              title="Divine Overlay"
+              themes={LAYER_THEMES}
+              activeId={activeLayerTheme}
+              unlockedThemes={unlockedThemes}
+              allowNone
+              onSelect={(id) => setLayerTheme(id)}
+            />
+
+            {/* Special themes */}
+            <ThemeColumn
+              title="Special"
+              themes={SPECIAL_THEMES}
+              activeId={activeSpecialTheme}
+              unlockedThemes={unlockedThemes}
+              allowNone
+              onSelect={(id) => setSpecialTheme(id)}
+            />
+          </div>
+        </div>
+
+        <Separator className="my-3" />
+
         {/* Keyboard shortcuts */}
         <div className="space-y-2">
           <h3 className="text-sm font-semibold flex items-center gap-1.5">
@@ -343,8 +419,30 @@ export function SettingsModal() {
           )}
         </div>
 
-        <div className="flex justify-end pt-2">
+        <div className="flex justify-end pt-2 items-center gap-2">
+          {debugUnlocked && (
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={handleDebugUnlock}
+              className="h-8 border-amber-500/50 text-amber-300 hover:bg-amber-500/10"
+              title="Testing only: unlock all prestige layers + grant resources"
+            >
+              <Bug className="w-3 h-3 mr-1" />
+              Debug: Unlock All Layers
+            </Button>
+          )}
           <Button variant="outline" onClick={() => setShowSettings(false)}>Close</Button>
+        </div>
+
+        <div className="flex justify-center pt-1">
+          <button
+            onClick={handleVersionClick}
+            className="text-[0.6rem] text-muted-foreground/60 hover:text-muted-foreground transition-colors select-none"
+            title={debugUnlocked ? "Debug mode enabled" : "Click 5× to enable debug"}
+          >
+            Evolution Idle · v1.0
+          </button>
         </div>
       </DialogContent>
     </Dialog>
@@ -371,5 +469,102 @@ function Shortcut({ keys, desc }: { keys: string; desc: string }) {
       </kbd>
       <span className="text-xs text-muted-foreground truncate">{desc}</span>
     </div>
+  );
+}
+
+// ============================================================
+// Theme picker column — renders a list of stage/layer/special themes
+// as radio-style buttons. Locked themes show "???".
+// ============================================================
+function ThemeColumn({
+  title,
+  themes,
+  activeId,
+  unlockedThemes,
+  allowNone,
+  onSelect,
+}: {
+  title: string;
+  themes: { id: string; name: string; desc: string }[];
+  activeId: string | null;
+  unlockedThemes: Record<string, boolean>;
+  allowNone?: boolean;
+  onSelect: (id: string | null) => void;
+}) {
+  return (
+    <div className="space-y-1.5">
+      <div className="text-[0.65rem] uppercase tracking-wide text-muted-foreground font-semibold">
+        {title}
+      </div>
+      <div className="space-y-1 max-h-72 overflow-y-auto pr-1">
+        {allowNone && (
+          <ThemeOption
+            name="None"
+            desc="No overlay — use stage theme as-is."
+            active={activeId === null}
+            unlocked={true}
+            onClick={() => onSelect(null)}
+          />
+        )}
+        {themes.map((t) => (
+          <ThemeOption
+            key={t.id}
+            name={t.name}
+            desc={t.desc}
+            active={activeId === t.id}
+            unlocked={!!unlockedThemes[t.id]}
+            onClick={() => onSelect(t.id)}
+          />
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function ThemeOption({
+  name,
+  desc,
+  active,
+  unlocked,
+  onClick,
+}: {
+  name: string;
+  desc: string;
+  active: boolean;
+  unlocked: boolean;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      onClick={onClick}
+      disabled={!unlocked}
+      title={unlocked ? desc : "Locked — progress further to unlock"}
+      className={cn(
+        "w-full text-left px-2 py-1.5 rounded border text-xs transition-colors",
+        active
+          ? "border-primary bg-primary/15 text-primary font-semibold"
+          : unlocked
+          ? "border-border bg-muted/30 hover:bg-muted/50 text-foreground"
+          : "border-border/40 bg-muted/10 text-muted-foreground/40 cursor-not-allowed"
+      )}
+    >
+      <div className="flex items-center justify-between gap-1">
+        <span className="truncate">
+          {unlocked ? name : "???"}
+        </span>
+        {active ? (
+          <Badge variant="outline" className="text-[0.55rem] text-primary border-primary/40 px-1 py-0">
+            On
+          </Badge>
+        ) : !unlocked ? (
+          <Lock className="w-3 h-3 shrink-0" />
+        ) : null}
+      </div>
+      {unlocked && (
+        <div className="text-[0.6rem] text-muted-foreground mt-0.5 leading-tight line-clamp-2">
+          {desc}
+        </div>
+      )}
+    </button>
   );
 }

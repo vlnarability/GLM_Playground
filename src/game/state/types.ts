@@ -1,5 +1,7 @@
 // Core game type definitions for Evolution Idle
 
+import type { WorldConfig } from "../data/genesis";
+
 export type ResourceId =
   | "atp" | "glucose" | "proteins" | "lipids" | "elements"
   | "food" | "water" | "materials" | "organic_matter" | "knowledge" | "culture"
@@ -12,7 +14,7 @@ export type StageId =
 
 export type TabId =
   | "actions" | "systems" | "production" | "tech" | "story"
-  | "codex" | "achievements" | "archive" | "log" | "shop";
+  | "codex" | "achievements" | "archive" | "log" | "shop" | "prestige";
 
 export interface ResourceDef {
   id: ResourceId;
@@ -80,11 +82,32 @@ export interface StageDef {
     minPopulation: number;
     minSystems: number;
     minTech: number;
-    minScore: number;
   };
   storyIntro: string;
   storyOutro: string;
 }
+
+// Upgrade effect types. "manual_mult" and the "manual" category were removed
+// (no manual actions scale that way anymore). "acceleration" was added for
+// time-warping upgrades, plus several new automation / prestige effects.
+export type UpgradeEffectType =
+  | "auto_mult"
+  | "cost_reduction"
+  | "start_bonus"
+  | "cap_boost"
+  | "evolve_boost"
+  | "auto_system_buyer"
+  | "auto_tech_buyer"
+  | "auto_evolver"
+  | "frontier_spirit"
+  | "ancestral_bounty"
+  | "challenge_mastery"
+  | "stage_compression"
+  | "temporal_acceleration"
+  | "deep_memory"
+  | "cosmic_understanding"
+  | "universal_boost"
+  | "universal_speed";
 
 export interface UpgradeDef {
   id: string;
@@ -93,9 +116,9 @@ export interface UpgradeDef {
   baseCost: number;
   maxLevel: number;
   costGrowth: number;
-  category: "manual" | "automation" | "economy" | "prestige";
+  category: "automation" | "economy" | "acceleration" | "prestige" | "universal";
   requiresWins?: number;
-  effect: { type: "manual_mult" | "auto_mult" | "cost_reduction" | "start_bonus" | "cap_boost" | "evolve_boost"; value: number };
+  effect: { type: UpgradeEffectType; value: number };
 }
 
 export interface StoryEntry {
@@ -167,6 +190,85 @@ export interface GameState {
   achievements: Record<string, boolean>; // earned achievements
   newAchievements: string[]; // queue of newly-earned achievement IDs for toast
 
+  // Layer 1 — Challenges
+  unlockedChallenges: boolean; // unlocked after first Galactic win
+  activeChallenge: string | null; // challenge id currently in progress
+  completedChallenges: Record<string, number>; // challengeId -> repeat count completed
+  challengeRepeatCounts: Record<string, number>; // challengeId -> current repeat attempt
+  showChallenges: boolean; // challenge modal visibility
+
+  // Auto-action timers (game-time markers for periodic automation)
+  autoTimers: { system: number; tech: number; evolve: number; challenge: number };
+
+  // Layer 2 — Enlightenment (Foresight)
+  divinity: number; // prestige currency earned at prestige when this layer is unlocked
+  foresightNodes: Record<string, boolean>; // purchased foresight node ids
+  activeForesightRoute: string | null; // currently active route id
+  showEnlightenment: boolean;
+
+  // Layer 3 — Transcendence
+  transcendenceOfferingsUsed: Record<string, number>; // offeringId -> repeat count
+  purchasedRituals: Record<string, boolean>; // permanent rituals purchased
+  activeTemporaryRituals: Record<string, number>; // ritualId -> remaining seconds
+  activeScripts: Record<string, boolean>; // scriptId -> on
+  bloodPactsUsed: Record<string, boolean>; // tierId -> used this run
+  scriptTimers: Record<string, number>; // scriptId -> last-fired game-time
+  showTranscendence: boolean;
+
+  // Layer 4 — Genesis
+  genesisSeeds: number; // currency for authoring worlds
+  authoredWorlds: WorldConfig[]; // list of authored world configs (permanent bonuses)
+  pendingWorldConfig: Partial<WorldConfig>; // current authoring selections
+  showGenesis: boolean;
+
+  // Layer 5 — Apotheosis
+  faith: number; // currency for divine laws / miracles
+  enactedDivineLaws: Record<string, boolean>;
+  activeWorshipMode: string | null;
+  performedMiracles: Record<string, number>; // miracleId -> count
+  miracleTimers: Record<string, number>; // miracleId -> remaining seconds (for temporary effects)
+  heresy: number; // 0-100; run ends at 100
+  activeHeresyResponse: string; // default "hr_ignore"
+  showApotheosis: boolean;
+
+  // Layer 6 — Singularity
+  singularityCores: number; // currency for relics/logic cores
+  equippedRelics: Record<string, boolean>; // relicId -> equipped
+  activeLogicCores: Record<string, boolean>; // coreId -> on
+  logicCoreTimers: Record<string, number>; // coreId -> last-fired game-time
+  showSingularity: boolean;
+
+  // Layer 7 — Omnipotence
+  equippedHybrids: Record<string, boolean>; // hybridId -> equipped
+  activeOmnipotenceStance: string; // "contained" | "balanced" | "embraced"
+  instability: number; // 0-100; run ends at 100
+  peakInstability: number; // peak this run (for unlock check)
+  showOmnipotence: boolean;
+
+  // Layer 8 — Divinity (the layer; not the resource)
+  prayer: number; // currency for prayer channels
+  prayerChannelLevels: Record<string, number>; // channelId -> level
+  activeDivineMask: string | null; // one active mask
+  activeWorshipPolarity: string | null; // one active polarity
+  showDivinityLayer: boolean;
+
+  // Layer 9 — Infinity
+  echoes: number; // currency for echoes
+  purchasedEchoes: Record<string, boolean>; // echoId -> purchased
+  resolvedForks: Record<string, string>; // forkId -> chosen branchId
+  takenFutureDebts: Record<string, boolean>; // debtId -> taken this run
+  repaidFutureDebts: Record<string, boolean>; // debtId -> repaid
+  showInfinity: boolean;
+
+  // Layer 10 — Eternity
+  testamentClauses: number; // currency for testament clauses
+  purchasedTestamentClauses: Record<string, boolean>; // clauseId -> purchased
+  activeCanonizations: Record<string, boolean>; // canonId -> active
+  activePermanenceWeaves: Record<string, boolean>; // weaveId -> active
+  chosenEnding: string | null; // "preserve" | "reset" | null
+  cosmicBoonStacks: number; // +1 per "Reset Universe" ending chosen
+  showEternity: boolean;
+
   // UI state
   currentTab: TabId;
   speed: number;
@@ -187,6 +289,34 @@ export interface GameState {
   tutorialDismissed: boolean;
   // Settings
   eventFrequency: "off" | "normal" | "frequent";
+
+  // Theme customization (Part 1 — Stage Theme System)
+  activeStageTheme: string;          // default "stage-cell"
+  activeLayerTheme: string | null;   // null = no overlay
+  activeSpecialTheme: string | null; // null = none (overrides stage+layer when set)
+  unlockedThemes: Record<string, boolean>; // which themes are unlocked
+
+  // ===== QUICK WINS =====
+  // WIN 2 — Active ability cooldowns (runtime; persisted across refresh for fairness)
+  activeAbilityCooldowns: Record<string, number>; // ability id → seconds remaining
+  activeAbilityEffects: Record<string, number>;   // effect id ("surge"|"overclock"|"divine_combo") → seconds remaining
+
+  // WIN 3 — Ritual combo tracking
+  lastRitualTime: number;     // game-time of last ritual perform
+  lastRitualId: string | null; // for "3 different rituals" requirement
+  ritualComboCount: number;   // 0-3 — distinct rituals within 60s window
+  ritualComboTimer: number;   // seconds remaining of Divine Combo bonus (+50% production)
+
+  // WIN 5 — Prestige Points (universal currency)
+  prestigePoints: number;
+
+  // WIN 7 — Random layer event timers (game-time markers for periodic layer events)
+  layerEventTimers: {
+    trial_of_fortune: number;
+    vision: number;
+    divine_whim: number;
+    heresy_surge: number;
+  };
 }
 
 export interface GameStore extends GameState {
@@ -206,6 +336,8 @@ export interface GameStore extends GameState {
   setShowShop: (v: boolean) => void;
   setShowEvolve: (v: boolean) => void;
   setShowSettings: (v: boolean) => void;
+  setShowChallenges: (v: boolean) => void;
+  setActiveChallenge: (challengeId: string | null) => void;
   dismissTutorial: () => void;
   resolveEvent: (eventId: string, choiceId: string) => void;
   setEventFrequency: (freq: "off" | "normal" | "frequent") => void;
@@ -218,4 +350,70 @@ export interface GameStore extends GameState {
   exportSave: () => string;
   importSave: (data: string) => boolean;
   addToLog: (msg: string) => void;
+  debugUnlockAll: () => void;
+
+  // Layer 2 — Enlightenment (Foresight)
+  setShowEnlightenment: (v: boolean) => void;
+  purchaseForesightNode: (nodeId: string) => void;
+  setForesightRoute: (routeId: string | null) => void;
+
+  // Layer 3 — Transcendence
+  setShowTranscendence: (v: boolean) => void;
+  performOffering: (offeringId: string) => void;
+  performRitual: (ritualId: string) => void;
+  toggleScript: (scriptId: string) => void;
+  performBloodPact: (tierId: string) => void;
+
+  // Layer 4 — Genesis
+  setShowGenesis: (v: boolean) => void;
+  setPendingWorldConfig: (cfg: Partial<WorldConfig>) => void;
+  authorWorld: () => void;
+
+  // Layer 5 — Apotheosis
+  setShowApotheosis: (v: boolean) => void;
+  enactDivineLaw: (lawId: string) => void;
+  setWorshipMode: (modeId: string | null) => void;
+  performMiracle: (miracleId: string) => void;
+  setHeresyResponse: (responseId: string) => void;
+
+  // Layer 6 — Singularity
+  setShowSingularity: (v: boolean) => void;
+  toggleRelicLoadout: (relicId: string) => void;
+  toggleLogicCore: (coreId: string) => void;
+
+  // Layer 7 — Omnipotence
+  setShowOmnipotence: (v: boolean) => void;
+  toggleHybridLineage: (hybridId: string) => void;
+  setOmnipotenceStance: (stanceId: string) => void;
+
+  // Layer 8 — Divinity (layer)
+  setShowDivinityLayer: (v: boolean) => void;
+  levelPrayerChannel: (channelId: string) => void;
+  setDivineMask: (maskId: string | null) => void;
+  setWorshipPolarity: (polarityId: string | null) => void;
+
+  // Layer 9 — Infinity
+  setShowInfinity: (v: boolean) => void;
+  purchaseEcho: (echoId: string) => void;
+  resolveFork: (forkId: string, branchId: string) => void;
+  takeFutureDebt: (debtId: string) => void;
+  repayFutureDebt: (debtId: string) => void;
+
+  // Layer 10 — Eternity
+  setShowEternity: (v: boolean) => void;
+  purchaseTestamentClause: (clauseId: string) => void;
+  toggleCanonization: (canonId: string) => void;
+  togglePermanenceWeave: (weaveId: string) => void;
+  chooseEnding: (endingId: "preserve" | "reset") => void;
+
+  // Theme customization
+  setStageTheme: (id: string) => void;
+  setLayerTheme: (id: string | null) => void;
+  setSpecialTheme: (id: string | null) => void;
+
+  // ===== QUICK WINS =====
+  // WIN 2 — Active abilities (one per prestige layer)
+  useActiveAbility: (layerId: string) => void;
+  // WIN 5 — Universal shop upgrade purchase (spends Prestige Points)
+  buyUniversalUpgrade: (upgradeId: string) => void;
 }

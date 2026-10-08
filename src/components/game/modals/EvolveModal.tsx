@@ -41,7 +41,6 @@ export function EvolveModal() {
     { label: "Population", current: population, need: reqs.minPopulation * evolveBoost },
     { label: "Systems built", current: totalSystems, need: reqs.minSystems * evolveBoost },
     { label: "Technologies", current: totalTech, need: reqs.minTech * evolveBoost },
-    { label: "Score", current: score, need: reqs.minScore * evolveBoost },
   ];
 
   const canEvolve = checks.every((c) => c.current >= c.need);

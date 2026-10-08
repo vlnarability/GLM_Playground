@@ -14,6 +14,7 @@ import {
   Archive as ArchiveIcon,
   ListTree,
   Store,
+  Crown,
 } from "lucide-react";
 
 const TABS: { id: TabId; label: string; icon: React.ReactNode; mobile?: boolean }[] = [
@@ -25,6 +26,7 @@ const TABS: { id: TabId; label: string; icon: React.ReactNode; mobile?: boolean 
   { id: "codex", label: "Codex", icon: <ScrollText className="w-4 h-4" /> },
   { id: "achievements", label: "Awards", icon: <Trophy className="w-4 h-4" /> },
   { id: "archive", label: "Archive", icon: <ArchiveIcon className="w-4 h-4" /> },
+  { id: "prestige", label: "Prestige", icon: <Crown className="w-4 h-4" /> },
   { id: "log", label: "Log", icon: <ListTree className="w-4 h-4" /> },
 ];
 

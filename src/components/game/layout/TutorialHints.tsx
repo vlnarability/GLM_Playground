@@ -61,11 +61,9 @@ const HINTS: Hint[] = [
       const totalSystems = Object.values(s.ownedSystems).reduce((a: number, b: any) => a + (b || 0), 0);
       const totalTech = Object.keys(s.technologies).length;
       const evolveBoost = 1 - Math.min(0.30, (s.upgrades["evolutionary_momentum"] || 0) * 0.05);
-      const score = Math.floor(s.population * 2 + totalSystems * 5 + totalTech * 10 + Object.values(s.resources).reduce((a: number, b: any) => a + (b || 0), 0) * 0.5 + s.time * 0.1);
       return s.population >= stage.evolveRequires.minPopulation * evolveBoost &&
              totalSystems >= stage.evolveRequires.minSystems * evolveBoost &&
-             totalTech >= stage.evolveRequires.minTech * evolveBoost &&
-             score >= stage.evolveRequires.minScore * evolveBoost;
+             totalTech >= stage.evolveRequires.minTech * evolveBoost;
     },
   },
 ];

@@ -9,7 +9,7 @@ export const ACTIONS: StageAction[] = [
     desc: "Pull glucose from the surrounding soup. The simplest act of survival.",
     stage: "cell",
     icon: "🍬",
-    produces: { glucose: 1 },
+    produces: { glucose: 2 },
     cooldown: 0.1,
   },
   {
@@ -19,7 +19,7 @@ export const ACTIONS: StageAction[] = [
     stage: "cell",
     icon: "🧬",
     cost: { glucose: 2 },
-    produces: { proteins: 1 },
+    produces: { proteins: 2 },
     cooldown: 0.2,
   },
   {
@@ -29,7 +29,7 @@ export const ACTIONS: StageAction[] = [
     stage: "cell",
     icon: "💧",
     cost: { glucose: 3 },
-    produces: { lipids: 2 },
+    produces: { lipids: 4 },
     cooldown: 0.3,
   },
   {
@@ -39,7 +39,7 @@ export const ACTIONS: StageAction[] = [
     stage: "cell",
     icon: "⚛️",
     cost: { atp: 1, glucose: 2 },
-    produces: { elements: 1 },
+    produces: { elements: 2 },
     cooldown: 0.4,
   },
 
