@@ -140,8 +140,34 @@ import {
   LAYER_ID_TO_THEME,
 } from "../data/themes";
 import { ACTIVE_ABILITIES, ACTIVE_ABILITY_MAP } from "../data/activeAbilities";
+import {
+  TRIAL_REALMS,
+  TRIAL_REALM_MAP,
+  PLAYABLE_REALM_IDS,
+  makeDefaultRealmState,
+  REALM_GROWTH_BREAKS_GOAL,
+  REALM_GROWTH_PASSIVE_FILL_PER_SEC,
+  REALM_DISCONTENT_HAPPINESS_THRESHOLD,
+  REALM_DISCONTENT_SURVIVE_SECONDS,
+  REALM_DISCONTENT_GOLD_GOAL,
+  REALM_SWIFTNESS_TIME_LIMIT,
+} from "../data/trialRealms";
 
 const STORAGE_KEY = "evolution_idle_v2";
+
+// ===== REBUILD: L1-6 helper factories =====
+function makeInitialFollowerGrid(): Array<{ state: string; type: string }> {
+  // 8×4 = 32 cells. All start faithful.
+  return Array.from({ length: 32 }, () => ({ state: "faithful", type: "follower" }));
+}
+
+function makeInitialDimensions() {
+  return [
+    { id: 0, name: "Alpha", speed: 1, pop: 8, stageIndex: 0, resources: 0, reachedGalactic: false },
+    { id: 1, name: "Beta", speed: 0.5, pop: 8, stageIndex: 0, resources: 0, reachedGalactic: false },
+    { id: 2, name: "Gamma", speed: 0.25, pop: 8, stageIndex: 0, resources: 0, reachedGalactic: false },
+  ];
+}
 
 function initialRunState(): Partial<GameState> {
   const resources = emptyResources();
@@ -300,6 +326,29 @@ function initialMetaState(): Partial<GameState> {
     prestigePoints: 0,
     // WIN 7 — Random layer event timers (game-time markers)
     layerEventTimers: { trial_of_fortune: 0, vision: 0, divine_whim: 0, heresy_surge: 0 },
+
+    // ===== REBUILD: LAYERS 1-6 UNIQUE GAMEPLAY LOOPS =====
+    // Layer 1 — Trial Realms
+    activeTrialRealm: null,
+    trialRealmState: {},
+    trialRealmsCompleted: {},
+    // Layer 2 — Constellation Map
+    constellationNodes: {},
+    constellationRevealed: {},
+    // Layer 3 — Divine Market
+    marketPrices: { food: 10, water: 8, materials: 15, science: 20, gold: 25, energy: 30 },
+    priceHistory: { food: [10], water: [8], materials: [15], science: [20], gold: [25], energy: [30] },
+    marketOwnedResources: {},
+    marketTickTimer: 10,
+    // Layer 4 — Sacred Grid (5×4 = 20 cells)
+    worldGrid: Array(20).fill(null),
+    worldGridSeeds: Array(20).fill(null),
+    // Layer 5 — Heresy Web (8×4 = 32 follower cells)
+    followerGrid: makeInitialFollowerGrid(),
+    heresySpreadTimer: 10,
+    // Layer 6 — Dimension Engine (3 parallel dimensions)
+    dimensions: makeInitialDimensions(),
+    dimensionRiftTimer: 60,
   };
 }
 
@@ -413,7 +462,10 @@ export const useGameStore = create<GameStore>()(
         // Surge multiplies total production output (after layer bonus & miracle)
         const surgeMult = surgeActive ? 3 : 1;
         const divineComboMult = divineComboActive ? 1.5 : 1;
-        autoMult *= (1 + layerProdBonusApplied) * (miracleDouble ? 2 : 1) * surgeMult * divineComboMult * universalBoostMult;
+        // REBUILD L1 — Realm of Swiftness: 5× production while realm is active
+        const realmSwiftnessActive = s.activeTrialRealm === "realm_swiftness";
+        const realmSwiftnessMult = realmSwiftnessActive ? 5 : 1;
+        autoMult *= (1 + layerProdBonusApplied) * (miracleDouble ? 2 : 1) * surgeMult * divineComboMult * universalBoostMult * realmSwiftnessMult;
 
         const techMult = techMultiplier(s, "production");
         const capBoostLvl = s.upgrades["expansive_vaults"] || 0;
@@ -1200,6 +1252,149 @@ export const useGameStore = create<GameStore>()(
         }
         void themesChanged;
 
+        // ===== REBUILD: LAYERS 1-6 UNIQUE GAMEPLAY LOOPS — tick processing =====
+        // Layer 1 — Trial Realms: progress the active realm's mini-game
+        let activeTrialRealm = s.activeTrialRealm;
+        let trialRealmState = { ...(s.trialRealmState || {}) };
+        let trialRealmsCompleted = { ...(s.trialRealmsCompleted || {}) };
+        if (activeTrialRealm && PLAYABLE_REALM_IDS.includes(activeTrialRealm)) {
+          const st = { ...(trialRealmState[activeTrialRealm] || makeDefaultRealmState(activeTrialRealm)) };
+          switch (activeTrialRealm) {
+            case "realm_growth": {
+              st.energy = Math.min(100, (st.energy || 0) + REALM_GROWTH_PASSIVE_FILL_PER_SEC * realDt);
+              break;
+            }
+            case "realm_discontent": {
+              // Happiness oscillates as a sine wave centered on 50, amplitude 35, period 12s
+              st.timer = (st.timer || 0) + realDt;
+              const phase = (st.timer / 12) * Math.PI * 2;
+              const target = 50 + Math.sin(phase) * 35;
+              // Drift toward target slowly
+              st.happiness = (st.happiness || 50) + (target - (st.happiness || 50)) * 0.1 * realDt;
+              st.happiness = Math.max(0, Math.min(100, st.happiness));
+              // Survival timer only progresses while happiness is above the threshold
+              st.survivedTime = (st.survivedTime || 0) + ((st.happiness || 0) >= REALM_DISCONTENT_HAPPINESS_THRESHOLD ? realDt : 0);
+              if ((st.happiness || 0) < REALM_DISCONTENT_HAPPINESS_THRESHOLD) {
+                st.happinessBelowThreshold = true;
+              }
+              // Check completion: survived ≥ 90s AND gold ≥ 200
+              if ((st.survivedTime || 0) >= REALM_DISCONTENT_SURVIVE_SECONDS && (st.gold || 0) >= REALM_DISCONTENT_GOLD_GOAL && !st.completed) {
+                st.completed = true;
+                trialRealmsCompleted[activeTrialRealm] = true;
+                setTimeout(() => get().addToLog("Realm of Discontent conquered! Permanent reward granted."), 0);
+              }
+              break;
+            }
+            case "realm_swiftness": {
+              st.timeLeft = Math.max(0, (st.timeLeft || REALM_SWIFTNESS_TIME_LIMIT) - realDt);
+              if (st.timeLeft <= 0 && !st.completed) {
+                // Time expired; failed unless we already reached Galactic
+                if (!st.reachedGalactic) {
+                  setTimeout(() => get().addToLog("Realm of Swiftness: time expired — run failed."), 0);
+                  activeTrialRealm = null;
+                }
+              }
+              if (s.stageIndex >= STAGES.length - 1) {
+                st.reachedGalactic = true;
+                if (!st.completed) {
+                  st.completed = true;
+                  trialRealmsCompleted[activeTrialRealm] = true;
+                  setTimeout(() => get().addToLog("Realm of Swiftness conquered! +15% all production speed."), 0);
+                }
+              }
+              break;
+            }
+          }
+          // Auto-close realm if completed (Growth handled in the breakthrough action)
+          if (st.completed && activeTrialRealm !== "realm_growth") {
+            activeTrialRealm = null;
+          }
+          trialRealmState[activeTrialRealm || s.activeTrialRealm!] = st;
+        }
+
+        // Layer 3 — Divine Market: random-walk prices every 10s
+        let marketPrices = { ...(s.marketPrices || {}) };
+        let priceHistory = { ...(s.priceHistory || {}) };
+        let marketOwnedResources = { ...(s.marketOwnedResources || {}) };
+        let marketTickTimer = (s.marketTickTimer || 10) - realDt;
+        if (marketTickTimer <= 0) {
+          marketTickTimer = 10;
+          for (const r of Object.keys(marketPrices)) {
+            const cur = marketPrices[r] || 10;
+            const drift = (Math.random() - 0.5) * 0.6; // ±30%
+            let next = cur * (1 + drift);
+            next = Math.max(1, Math.min(200, next));
+            marketPrices[r] = next;
+            const hist = (priceHistory[r] || []).slice(-19);
+            hist.push(next);
+            priceHistory[r] = hist;
+          }
+        }
+        // Divine-dends — passive Divinity from owned resource types (100+ units → +1 Div/s)
+        if (unlockedLayers.transcendence) {
+          let dividends = 0;
+          for (const r of Object.keys(marketOwnedResources)) {
+            if ((marketOwnedResources[r] || 0) >= 100) dividends += 1;
+          }
+          if (dividends > 0) divinity += dividends * realDt;
+        }
+
+        // Layer 5 — Heresy Web: spread every 10s (independent of the global heresy meter)
+        let followerGrid = s.followerGrid ? s.followerGrid.slice() : makeInitialFollowerGrid();
+        let heresySpreadTimer = (s.heresySpreadTimer || 10) - realDt;
+        if (unlockedLayers.apotheosis && heresySpreadTimer <= 0) {
+          heresySpreadTimer = 10;
+          const next = followerGrid.map((c) => ({ ...c }));
+          // Spread from each heretical cell to one random adjacent faithful cell
+          for (let i = 0; i < next.length; i++) {
+            if (next[i].state !== "heretical") continue;
+            const row = Math.floor(i / 8);
+            const col = i % 8;
+            const neighbors = [
+              col > 0 ? i - 1 : -1,
+              col < 7 ? i + 1 : -1,
+              row > 0 ? i - 8 : -1,
+              row < 3 ? i + 8 : -1,
+            ].filter((n) => n >= 0 && next[n].state === "faithful");
+            if (neighbors.length === 0) continue;
+            const target = neighbors[Math.floor(Math.random() * neighbors.length)];
+            next[target].state = "heretical";
+          }
+          followerGrid = next;
+        }
+
+        // Layer 6 — Dimension Engine: parallel dimension progress
+        let dimensions = (s.dimensions || makeInitialDimensions()).map((d) => ({ ...d }));
+        let dimensionRiftTimer = (s.dimensionRiftTimer || 60) - realDt;
+        for (const d of dimensions) {
+          if (d.reachedGalactic) continue;
+          // Each dimension accrues resources & population at its own speed
+          d.resources += d.pop * 0.1 * d.speed * realDt;
+          // Pop grows slowly (1 per 5s at speed 1)
+          d.pop += 0.2 * d.speed * realDt;
+          // Stage up: every 100 resources → advance stage
+          while (d.resources >= 100 && d.stageIndex < STAGES.length - 1) {
+            d.resources -= 100;
+            d.stageIndex += 1;
+          }
+          if (d.stageIndex >= STAGES.length - 1) {
+            d.reachedGalactic = true;
+          }
+        }
+        if (dimensionRiftTimer <= 0) {
+          // Rift event — transfer resources between two random dimensions
+          dimensionRiftTimer = 60;
+          if (dimensions.length >= 2) {
+            const fromIdx = Math.floor(Math.random() * dimensions.length);
+            let toIdx = Math.floor(Math.random() * dimensions.length);
+            while (toIdx === fromIdx) toIdx = Math.floor(Math.random() * dimensions.length);
+            const transfer = Math.min(dimensions[fromIdx].resources, 25);
+            dimensions[fromIdx].resources -= transfer;
+            dimensions[toIdx].resources += transfer;
+            setTimeout(() => get().addToLog(`🌀 Rift event! ${dimensions[fromIdx].name} → ${dimensions[toIdx].name}: ${transfer.toFixed(1)} resources transferred.`), 0);
+          }
+        }
+
         set({
           resources,
           capacities,
@@ -1247,6 +1442,18 @@ export const useGameStore = create<GameStore>()(
           ritualComboTimer,
           layerEventTimers,
           prestigePoints,
+          // REBUILD L1-6 — runtime state for the new mini-games
+          activeTrialRealm,
+          trialRealmState,
+          trialRealmsCompleted,
+          marketPrices,
+          priceHistory,
+          marketOwnedResources,
+          marketTickTimer,
+          followerGrid,
+          heresySpreadTimer,
+          dimensions,
+          dimensionRiftTimer,
         });
       },
 
@@ -2272,6 +2479,319 @@ export const useGameStore = create<GameStore>()(
         get().addToLog(`${core.name} ${activeLogicCores[coreId] ? "activated" : "deactivated"}.`);
       },
 
+      // ============ REBUILD L1-6 — NEW MINI-GAME ACTIONS ============
+      // ---- Layer 1 — Trial Realms ----
+      setActiveTrialRealm: (realmId) => {
+        const s = get();
+        if (realmId === null) {
+          set({ activeTrialRealm: null });
+          return;
+        }
+        if (!TRIAL_REALM_MAP[realmId]) return;
+        const realmState = { ...(s.trialRealmState || {}) };
+        if (!realmState[realmId]) {
+          realmState[realmId] = makeDefaultRealmState(realmId);
+        }
+        set({ activeTrialRealm: realmId, trialRealmState: realmState });
+      },
+
+      realmBreakthrough: () => {
+        const s = get();
+        const realmId = s.activeTrialRealm;
+        if (realmId !== "realm_growth") return;
+        const rs = { ...(s.trialRealmState || {}) };
+        const st = { ...(rs.realm_growth || makeDefaultRealmState("realm_growth")) };
+        if ((st.energy || 0) < 100) return;
+        st.energy = 0;
+        st.breaks = (st.breaks || 0) + 1;
+        st.breakCostMult = (st.breakCostMult || 1) * 1.2;
+        // Population gain +50% of current population
+        const popGain = Math.max(2, Math.floor(s.population * 0.5));
+        const newPop = s.population + popGain;
+        const trialRealmsCompleted = { ...(s.trialRealmsCompleted || {}) };
+        if (st.breaks >= REALM_GROWTH_BREAKS_GOAL) {
+          st.completed = true;
+          trialRealmsCompleted.realm_growth = true;
+          setTimeout(() => get().addToLog(`Realm of Growth conquered! 10 Break-Throughs performed. +10% population growth permanently.`), 0);
+        }
+        rs.realm_growth = st;
+        set({
+          population: newPop,
+          maxPopulation: Math.max(s.maxPopulation || 0, newPop),
+          trialRealmState: rs,
+          trialRealmsCompleted,
+          activeTrialRealm: st.completed ? null : s.activeTrialRealm,
+        });
+        get().addToLog(`🌱 Break-Through #${st.breaks}! +${popGain} population.`);
+      },
+
+      realmDiscontentAction: (action) => {
+        const s = get();
+        const realmId = s.activeTrialRealm;
+        if (realmId !== "realm_discontent") return;
+        const rs = { ...(s.trialRealmState || {}) };
+        const st = { ...(rs.realm_discontent || makeDefaultRealmState("realm_discontent")) };
+        const resources = { ...s.resources };
+        switch (action) {
+          case "celebrate":
+            st.happiness = Math.min(100, (st.happiness || 50) + 20);
+            resources.gold = Math.max(0, (resources.gold || 0) - 10);
+            break;
+          case "tax":
+            st.gold = (st.gold || 0) + 20;
+            resources.gold = (resources.gold || 0) + 20;
+            st.happiness = Math.max(0, (st.happiness || 50) - 15);
+            break;
+          case "ignore":
+            st.happiness = Math.min(100, (st.happiness || 50) + 5);
+            st.gold = (st.gold || 0) + 5;
+            resources.gold = (resources.gold || 0) + 5;
+            break;
+        }
+        rs.realm_discontent = st;
+        set({ trialRealmState: rs, resources });
+      },
+
+      // ---- Layer 2 — Constellation Map ----
+      illuminateConstellationNode: (nodeId) => {
+        const s = get();
+        if (!s.unlockedLayers?.enlightenment) return;
+        const node = FORESIGHT_NODE_MAP[nodeId];
+        if (!node) return;
+        if (s.foresightNodes?.[nodeId]) return;
+        if (node.requires && !s.foresightNodes?.[node.requires]) return;
+        if ((s.divinity || 0) < node.cost) return;
+        set({
+          divinity: (s.divinity || 0) - node.cost,
+          foresightNodes: { ...(s.foresightNodes || {}), [nodeId]: true },
+          constellationNodes: { ...(s.constellationNodes || {}), [nodeId]: true },
+          prestigePoints: (s.prestigePoints || 0) + 1,
+        });
+        get().addToLog(`✦ Illuminated: ${node.name} (-${node.cost} Divinity). (+1 PP)`);
+      },
+
+      stargazeReveal: () => {
+        const s = get();
+        if (!s.unlockedLayers?.enlightenment) return;
+        // Costs 25 Divinity — reveals connections (visual only)
+        if ((s.divinity || 0) < 25) return;
+        const revealed = { ...(s.constellationRevealed || {}) };
+        for (const n of FORESIGHT_NODES) revealed[n.id] = true;
+        set({ divinity: (s.divinity || 0) - 25, constellationRevealed: revealed });
+        get().addToLog("✦ Stargaze: hidden connections revealed (-25 Divinity).");
+      },
+
+      supernovaIlluminate: (nodeId) => {
+        const s = get();
+        if (!s.unlockedLayers?.enlightenment) return;
+        // Costs 50 Divinity — illuminates the target node (if affordable) AND auto-illuminates any adjacent already-revealed nodes
+        const target = FORESIGHT_NODE_MAP[nodeId];
+        if (!target) return;
+        if ((s.divinity || 0) < 50) return;
+        // Find grid index of the target node and its neighbors (5×4 grid, 20 nodes total)
+        const idx = FORESIGHT_NODES.findIndex((n) => n.id === nodeId);
+        if (idx < 0) return;
+        const row = Math.floor(idx / 5);
+        const col = idx % 5;
+        const neighborIdx: number[] = [];
+        if (col > 0) neighborIdx.push(idx - 1);
+        if (col < 4) neighborIdx.push(idx + 1);
+        if (row > 0) neighborIdx.push(idx - 5);
+        if (row < 3) neighborIdx.push(idx + 5);
+        const foresightNodes = { ...(s.foresightNodes || {}) };
+        const constellationNodes = { ...(s.constellationNodes || {}) };
+        let ignited = 0;
+        if (!foresightNodes[nodeId] && (!target.requires || foresightNodes[target.requires])) {
+          foresightNodes[nodeId] = true;
+          constellationNodes[nodeId] = true;
+          ignited++;
+        }
+        for (const ni of neighborIdx) {
+          const nNode = FORESIGHT_NODES[ni];
+          if (!nNode || foresightNodes[nNode.id]) continue;
+          if (nNode.requires && !foresightNodes[nNode.requires]) continue;
+          foresightNodes[nNode.id] = true;
+          constellationNodes[nNode.id] = true;
+          ignited++;
+        }
+        set({
+          divinity: (s.divinity || 0) - 50,
+          foresightNodes,
+          constellationNodes,
+          prestigePoints: (s.prestigePoints || 0) + ignited,
+        });
+        get().addToLog(`✦ Supernova: ${ignited} node(s) illuminated (-50 Divinity). (+${ignited} PP)`);
+      },
+
+      blackHoleReset: () => {
+        const s = get();
+        if (!s.unlockedLayers?.enlightenment) return;
+        // Refund 50% of spent Divinity (cost basis) and clear all constellation nodes
+        let refund = 0;
+        for (const n of FORESIGHT_NODES) {
+          if (s.foresightNodes?.[n.id]) refund += Math.floor(n.cost * 0.5);
+        }
+        set({
+          divinity: (s.divinity || 0) + refund,
+          foresightNodes: {},
+          constellationNodes: {},
+          constellationRevealed: {},
+          activeForesightRoute: null,
+        });
+        get().addToLog(`✦ Black Hole: refunded ${refund} Divinity. Constellation reset.`);
+      },
+
+      // ---- Layer 3 — Divine Market ----
+      marketBuyResource: (resourceId, qty) => {
+        const s = get();
+        if (!s.unlockedLayers?.transcendence) return;
+        const price = s.marketPrices?.[resourceId] || 10;
+        const totalCost = price * qty;
+        if ((s.divinity || 0) < totalCost) return;
+        const owned = { ...(s.marketOwnedResources || {}) };
+        owned[resourceId] = (owned[resourceId] || 0) + qty;
+        set({
+          divinity: (s.divinity || 0) - totalCost,
+          marketOwnedResources: owned,
+        });
+        get().addToLog(`🛒 Bought ${qty} ${resourceId} @ ${price.toFixed(1)} Div each (-${totalCost.toFixed(1)} Divinity).`);
+      },
+
+      marketSellResource: (resourceId, qty) => {
+        const s = get();
+        if (!s.unlockedLayers?.transcendence) return;
+        const owned = { ...(s.marketOwnedResources || {}) };
+        const have = owned[resourceId] || 0;
+        if (have < qty) return;
+        const price = s.marketPrices?.[resourceId] || 10;
+        owned[resourceId] = have - qty;
+        if (owned[resourceId] <= 0) delete owned[resourceId];
+        set({
+          divinity: (s.divinity || 0) + price * qty,
+          marketOwnedResources: owned,
+        });
+        get().addToLog(`🛒 Sold ${qty} ${resourceId} @ ${price.toFixed(1)} Div each (+${(price * qty).toFixed(1)} Divinity).`);
+      },
+
+      marketOffering: (resourceId, qty) => {
+        // Convert owned market resources → Divinity scaled by current price
+        const s = get();
+        if (!s.unlockedLayers?.transcendence) return;
+        const owned = { ...(s.marketOwnedResources || {}) };
+        const have = owned[resourceId] || 0;
+        if (have < qty) return;
+        const price = s.marketPrices?.[resourceId] || 10;
+        // High price → more Divinity per unit
+        const gain = Math.floor(qty * price * 1.5);
+        owned[resourceId] = have - qty;
+        if (owned[resourceId] <= 0) delete owned[resourceId];
+        set({
+          divinity: (s.divinity || 0) + gain,
+          marketOwnedResources: owned,
+        });
+        get().addToLog(`💎 Offering: ${qty} ${resourceId} → +${gain} Divinity (price ${price.toFixed(1)}).`);
+      },
+
+      // ---- Layer 4 — Sacred Grid ----
+      placeGridTile: (cellIndex, tileType) => {
+        const s = get();
+        if (!s.unlockedLayers?.genesis) return;
+        if (cellIndex < 0 || cellIndex >= 20) return;
+        const grid = (s.worldGrid || Array(20).fill(null)).slice();
+        if (grid[cellIndex] !== null) return;
+        grid[cellIndex] = tileType;
+        // Reveal dormant seeds on adjacent empty cells (1 in 3 chance of a seed appearing)
+        const seeds = (s.worldGridSeeds || Array(20).fill(null)).slice();
+        const row = Math.floor(cellIndex / 5);
+        const col = cellIndex % 5;
+        const neighborIdx = [
+          col > 0 ? cellIndex - 1 : -1,
+          col < 4 ? cellIndex + 1 : -1,
+          row > 0 ? cellIndex - 5 : -1,
+          row < 3 ? cellIndex + 5 : -1,
+        ].filter((i) => i >= 0 && grid[i] === null && !seeds[i]);
+        for (const ni of neighborIdx) {
+          if (Math.random() < 0.33) seeds[ni] = "seed_dormant";
+        }
+        set({ worldGrid: grid, worldGridSeeds: seeds });
+        get().addToLog(`🗺️ Placed ${tileType} tile on cell ${cellIndex + 1}.`);
+      },
+
+      resetWorldGrid: () => {
+        const s = get();
+        if (!s.unlockedLayers?.genesis) return;
+        set({ worldGrid: Array(20).fill(null), worldGridSeeds: Array(20).fill(null) });
+        get().addToLog("🗺️ Sacred Grid reset.");
+      },
+
+      // ---- Layer 5 — Heresy Web ----
+      convertFollower: (cellIndex) => {
+        const s = get();
+        if (!s.unlockedLayers?.apotheosis) return;
+        if (cellIndex < 0 || cellIndex >= 32) return;
+        const grid = (s.followerGrid || makeInitialFollowerGrid()).map((c) => ({ ...c }));
+        if (grid[cellIndex].state === "faithful") return; // already faithful
+        const cost = 5;
+        if ((s.divinity || 0) < cost) return;
+        grid[cellIndex].state = "faithful";
+        set({ divinity: (s.divinity || 0) - cost, followerGrid: grid });
+      },
+
+      purgeFollower: (cellIndex) => {
+        const s = get();
+        if (!s.unlockedLayers?.apotheosis) return;
+        if (cellIndex < 0 || cellIndex >= 32) return;
+        const grid = (s.followerGrid || makeInitialFollowerGrid()).map((c) => ({ ...c }));
+        if (grid[cellIndex].state === "empty") return;
+        grid[cellIndex].state = "empty";
+        // Faith drop minor
+        const faithDrop = 2;
+        set({ followerGrid: grid, faith: Math.max(0, (s.faith || 0) - faithDrop) });
+      },
+
+      initFollowerGrid: () => {
+        const s = get();
+        if (!s.unlockedLayers?.apotheosis) return;
+        set({ followerGrid: makeInitialFollowerGrid() });
+        get().addToLog("Flock restored to 32 faithful followers.");
+      },
+
+      // ---- Layer 6 — Dimension Engine ----
+      setDimensionSpeed: (dimId, speed) => {
+        const s = get();
+        if (!s.unlockedLayers?.singularity) return;
+        const dims = (s.dimensions || makeInitialDimensions()).map((d) => ({ ...d }));
+        const d = dims.find((x) => x.id === dimId);
+        if (!d) return;
+        if (![1, 0.5, 0.25].includes(speed)) return;
+        d.speed = speed;
+        set({ dimensions: dims });
+      },
+
+      syncDimension: (fromId, toId) => {
+        const s = get();
+        if (!s.unlockedLayers?.singularity) return;
+        const cost = 50;
+        if ((s.divinity || 0) < cost) return;
+        const dims = (s.dimensions || makeInitialDimensions()).map((d) => ({ ...d }));
+        const from = dims.find((x) => x.id === fromId);
+        const to = dims.find((x) => x.id === toId);
+        if (!from || !to || from.id === to.id) return;
+        // Copy progress: stageIndex and population (not resources — to prevent full duplication)
+        to.stageIndex = Math.max(to.stageIndex, from.stageIndex);
+        to.pop = Math.max(to.pop, Math.floor(from.pop * 0.5));
+        if (from.reachedGalactic) to.reachedGalactic = true;
+        set({ divinity: (s.divinity || 0) - cost, dimensions: dims });
+        get().addToLog(`🔄 Sync: ${from.name} → ${to.name} (-50 Divinity).`);
+      },
+
+      initDimensions: () => {
+        const s = get();
+        if (!s.unlockedLayers?.singularity) return;
+        set({ dimensions: makeInitialDimensions() });
+        get().addToLog("Dimension Engine initialized — three parallel timelines.");
+      },
+
       // ============ LAYER 7 — OMNIPOTENCE ============
       toggleHybridLineage: (hybridId) => {
         const s = get();
@@ -2791,7 +3311,7 @@ export const useGameStore = create<GameStore>()(
         }
         return window.localStorage;
       }),
-      version: 7,
+      version: 8,
       partialize: (s) => s,
       // Migrate old saves (v1, v2, v3) to new structure
       migrate: (persisted: any, version: number) => {
@@ -2941,6 +3461,27 @@ export const useGameStore = create<GameStore>()(
           if (persisted.upgrades.universal_boost === undefined) persisted.upgrades.universal_boost = 0;
           if (persisted.upgrades.universal_speed === undefined) persisted.upgrades.universal_speed = 0;
         }
+
+        // v8 migration: REBUILD L1-6 unique gameplay loops
+        if (persisted.activeTrialRealm === undefined) persisted.activeTrialRealm = null;
+        if (!persisted.trialRealmState) persisted.trialRealmState = {};
+        if (!persisted.trialRealmsCompleted) persisted.trialRealmsCompleted = {};
+        if (!persisted.constellationNodes) persisted.constellationNodes = {};
+        if (!persisted.constellationRevealed) persisted.constellationRevealed = {};
+        if (!persisted.marketPrices) persisted.marketPrices = { food: 10, water: 8, materials: 15, science: 20, gold: 25, energy: 30 };
+        if (!persisted.priceHistory) persisted.priceHistory = { food: [10], water: [8], materials: [15], science: [20], gold: [25], energy: [30] };
+        if (!persisted.marketOwnedResources) persisted.marketOwnedResources = {};
+        if (persisted.marketTickTimer === undefined) persisted.marketTickTimer = 10;
+        if (!persisted.worldGrid) persisted.worldGrid = Array(20).fill(null);
+        if (!persisted.worldGridSeeds) persisted.worldGridSeeds = Array(20).fill(null);
+        if (!persisted.followerGrid) persisted.followerGrid = Array.from({ length: 32 }, () => ({ state: "faithful", type: "follower" }));
+        if (persisted.heresySpreadTimer === undefined) persisted.heresySpreadTimer = 10;
+        if (!persisted.dimensions) persisted.dimensions = [
+          { id: 0, name: "Alpha", speed: 1, pop: 8, stageIndex: 0, resources: 0, reachedGalactic: false },
+          { id: 1, name: "Beta", speed: 0.5, pop: 8, stageIndex: 0, resources: 0, reachedGalactic: false },
+          { id: 2, name: "Gamma", speed: 0.25, pop: 8, stageIndex: 0, resources: 0, reachedGalactic: false },
+        ];
+        if (persisted.dimensionRiftTimer === undefined) persisted.dimensionRiftTimer = 60;
 
         return persisted;
       },

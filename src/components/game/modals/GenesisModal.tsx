@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import { useGameStore } from "@/game/state/store";
 import {
   CRADLE_WORLDS,
@@ -21,8 +22,71 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } f
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
-import { Lock, Egg, CheckCircle2 } from "lucide-react";
+import { Lock, Egg, CheckCircle2, RotateCcw } from "lucide-react";
 import { formatNumber } from "../shared/format";
+
+const GRID_COLS = 5;
+const GRID_ROWS = 4;
+const GRID_SIZE = GRID_COLS * GRID_ROWS; // 20
+
+const TILE_TYPES = [
+  { id: "forest", name: "Forest", icon: "🌲", bonus: "+5% food production", color: "text-emerald-300 border-emerald-400/40 bg-emerald-500/10" },
+  { id: "mountain", name: "Mountain", icon: "⛰️", bonus: "+5% materials & stone production", color: "text-stone-300 border-stone-400/40 bg-stone-500/10" },
+  { id: "ocean", name: "Ocean", icon: "🌊", bonus: "+5% water production", color: "text-sky-300 border-sky-400/40 bg-sky-500/10" },
+  { id: "desert", name: "Desert", icon: "🏜️", bonus: "+5% gold production", color: "text-amber-300 border-amber-400/40 bg-amber-500/10" },
+  { id: "plains", name: "Plains", icon: "🌾", bonus: "+2% to all production", color: "text-yellow-300 border-yellow-400/40 bg-yellow-500/10" },
+];
+
+const TILE_MAP: Record<string, typeof TILE_TYPES[number]> = Object.fromEntries(
+  TILE_TYPES.map((t) => [t.id, t])
+);
+
+// Adjacency helpers
+function neighborIndices(idx: number): number[] {
+  const row = Math.floor(idx / GRID_COLS);
+  const col = idx % GRID_COLS;
+  const result: number[] = [];
+  if (col > 0) result.push(idx - 1);
+  if (col < GRID_COLS - 1) result.push(idx + 1);
+  if (row > 0) result.push(idx - GRID_COLS);
+  if (row < GRID_ROWS - 1) result.push(idx + GRID_COLS);
+  return result;
+}
+
+// Find groups of 3+ same-type connected tiles
+function findCombos(grid: Array<string | null>): { tileId: string; cells: number[] }[] {
+  const visited = new Set<number>();
+  const combos: { tileId: string; cells: number[] }[] = [];
+  for (let i = 0; i < grid.length; i++) {
+    if (grid[i] === null || visited.has(i)) continue;
+    const tileId = grid[i]!;
+    const comp: number[] = [];
+    const queue = [i];
+    while (queue.length > 0) {
+      const cur = queue.shift()!;
+      if (visited.has(cur) || grid[cur] !== tileId) continue;
+      visited.add(cur);
+      comp.push(cur);
+      for (const ni of neighborIndices(cur)) {
+        if (grid[ni] === tileId && !visited.has(ni)) queue.push(ni);
+      }
+    }
+    if (comp.length >= 3) combos.push({ tileId, cells: comp });
+  }
+  return combos;
+}
+
+// Count adjacency bonuses (each tile adjacent to another tile of any type)
+function countAdjacencyBonuses(grid: Array<string | null>): number {
+  let count = 0;
+  for (let i = 0; i < grid.length; i++) {
+    if (grid[i] === null) continue;
+    for (const ni of neighborIndices(i)) {
+      if (grid[ni] !== null && grid[ni] !== grid[i]) count++;
+    }
+  }
+  return count;
+}
 
 export function GenesisModal() {
   const show = useGameStore((s) => s.showGenesis);
@@ -34,6 +98,12 @@ export function GenesisModal() {
   const setPendingWorldConfig = useGameStore((s) => s.setPendingWorldConfig);
   const authorWorld = useGameStore((s) => s.authorWorld);
 
+  // REBUILD L4 — Sacred Grid state
+  const worldGrid = useGameStore((s) => s.worldGrid || Array(GRID_SIZE).fill(null));
+  const worldGridSeeds = useGameStore((s) => s.worldGridSeeds || Array(GRID_SIZE).fill(null));
+  const placeGridTile = useGameStore((s) => s.placeGridTile);
+  const resetWorldGrid = useGameStore((s) => s.resetWorldGrid);
+
   const isUnlocked = !!unlockedLayers.genesis;
   const wProd = worldProductionMult(authoredWorlds);
   const wCap = worldCapMult(authoredWorlds);
@@ -42,17 +112,26 @@ export function GenesisModal() {
 
   const canAuthor = !!(pending.cradleWorldId && pending.primeConditionId && pending.sacredGeographyId && pending.dormantSeedId && pending.difficultyTierId);
 
+  const filledTiles = worldGrid.filter((t) => t !== null).length;
+  const combos = findCombos(worldGrid);
+  const adjacencyCount = countAdjacencyBonuses(worldGrid);
+  // Grid bonus: each filled tile +1% production, each combo +5%, each adjacency +0.5%
+  const gridProductionBonus = filledTiles * 0.01 + combos.length * 0.05 + adjacencyCount * 0.005;
+
+  // Active tile type to place (local React state)
+  const [activeTile, setActiveTile] = useState<string>("forest");
+
   return (
     <Dialog open={show} onOpenChange={setShow}>
-      <DialogContent className="max-w-3xl max-h-[85vh] overflow-y-auto glass-strong">
+      <DialogContent className="max-w-4xl max-h-[88vh] overflow-y-auto glass-strong">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2 text-lg">
             <Egg className="w-5 h-5" />
-            Layer 4 — Genesis
+            Layer 4 — Genesis (Sacred Grid)
           </DialogTitle>
           <DialogDescription className="flex items-center justify-between">
             <span>
-              Author World Configs from 5 component choices. Each world grants permanent production / capacity / EP / pop bonuses.
+              Place sacred tiles on a 5×4 grid. Adjacent tiles amplify each other; 3+ matching tiles form a combo.
             </span>
             <Badge variant="outline" className="text-emerald-300 border-emerald-400/40">
               {formatNumber(genesisSeeds, 0)} Seeds
@@ -68,6 +147,71 @@ export function GenesisModal() {
           </div>
         ) : (
           <div className="space-y-4">
+            {/* Sacred Grid — the new mini-game */}
+            <section className="stat-card">
+              <div className="flex items-center justify-between mb-2">
+                <div className="text-[0.7rem] uppercase tracking-wide text-emerald-300/80">Sacred Grid (5×4 = 20 cells)</div>
+                <Button size="sm" variant="ghost" onClick={resetWorldGrid} className="h-7 text-[0.65rem]">
+                  <RotateCcw className="w-3 h-3 mr-1" /> Reset Grid
+                </Button>
+              </div>
+              <div className="text-[0.65rem] text-muted-foreground mb-2">
+                Pick a tile type, then click an empty cell. Placing next to dormant seeds may reveal them.
+                Each tile gives <span className="text-cyan-300">+1% prod</span>; each adjacency <span className="text-amber-300">+0.5%</span>; each 3+ combo <span className="text-pink-300">+5%</span>.
+              </div>
+
+              {/* Tile picker */}
+              <TilePicker
+                activeTileId={activeTile}
+                onSelect={(id) => setActiveTile(id)}
+              />
+
+              {/* Grid stats */}
+              <div className="flex flex-wrap gap-1 mt-2 mb-2">
+                <Badge variant="outline" className="text-[0.6rem] text-cyan-300 border-cyan-400/40">{filledTiles}/20 tiles placed</Badge>
+                <Badge variant="outline" className="text-[0.6rem] text-amber-300 border-amber-400/40">{adjacencyCount} adjacencies (+{(adjacencyCount * 0.5).toFixed(1)}% prod)</Badge>
+                <Badge variant="outline" className="text-[0.6rem] text-pink-300 border-pink-400/40">{combos.length} combos (+{(combos.length * 5).toFixed(0)}% prod)</Badge>
+                <Badge variant="outline" className="text-[0.6rem] text-emerald-300 border-emerald-400/40">Grid total: +{(gridProductionBonus * 100).toFixed(1)}% prod</Badge>
+              </div>
+
+              {/* The 5×4 grid */}
+              <div
+                className="grid gap-1.5"
+                style={{ gridTemplateColumns: `repeat(${GRID_COLS}, 1fr)`, gridTemplateRows: `repeat(${GRID_ROWS}, 1fr)` }}
+              >
+                {Array.from({ length: GRID_SIZE }, (_, i) => {
+                  const tileId = worldGrid[i];
+                  const seed = worldGridSeeds[i];
+                  const tile = tileId ? TILE_MAP[tileId] : null;
+                  const inCombo = combos.some((c) => c.cells.includes(i));
+                  return (
+                    <button
+                      key={i}
+                      disabled={tileId !== null}
+                      onClick={() => placeGridTile(i, activeTile)}
+                      className={`relative aspect-square rounded-md border flex items-center justify-center transition-all
+                        ${tile
+                          ? `${tile.color} ${inCombo ? "ring-2 ring-pink-400/60" : ""}`
+                          : seed
+                            ? "border-violet-400/40 bg-violet-500/10 hover:border-violet-400/70"
+                            : "border-muted-foreground/20 bg-muted/10 hover:border-emerald-400/40 hover:bg-emerald-500/5"
+                        }
+                      `}
+                      title={tile ? `${tile.name} — ${tile.bonus}` : seed ? "Dormant seed — place next to it" : "Empty — click to place"}
+                    >
+                      <span className="text-2xl">
+                        {tile ? tile.icon : seed ? "✨" : ""}
+                      </span>
+                      {inCombo && (
+                        <span className="absolute -top-1 -right-1 text-[0.6rem] text-pink-300">★</span>
+                      )}
+                    </button>
+                  );
+                })}
+              </div>
+            </section>
+
+            {/* Aggregated world bonuses */}
             <div className="stat-card">
               <div className="text-[0.7rem] uppercase tracking-wide text-muted-foreground mb-1">Aggregated bonuses from {authoredWorlds.length} authored world(s)</div>
               <div className="flex flex-wrap gap-1">
@@ -78,7 +222,7 @@ export function GenesisModal() {
               </div>
             </div>
 
-            {/* Author UI */}
+            {/* Author UI (preserved) */}
             <section className="stat-card">
               <div className="text-[0.7rem] uppercase tracking-wide text-muted-foreground mb-1">Author a new world (costs 1 Genesis Seed)</div>
               <ConfigPicker
@@ -112,11 +256,7 @@ export function GenesisModal() {
                 onSelect={(id) => setPendingWorldConfig({ difficultyTierId: id })}
               />
               <div className="flex justify-end mt-2">
-                <Button
-                  size="sm"
-                  disabled={!canAuthor || genesisSeeds < 1}
-                  onClick={() => authorWorld()}
-                >
+                <Button size="sm" disabled={!canAuthor || genesisSeeds < 1} onClick={() => authorWorld()}>
                   Author World (1 Seed)
                 </Button>
               </div>
@@ -164,13 +304,34 @@ export function GenesisModal() {
 
         <Separator className="my-2" />
         <div className="text-[0.65rem] text-muted-foreground px-1">
-          Authored worlds grant permanent bonuses across all future runs. Author at least 1 world to unlock Layer 5 (Apotheosis).
+          The <span className="text-emerald-300">Sacred Grid</span> is the new gameplay loop — place tiles strategically to maximize combos and adjacency bonuses.
+          Author at least 1 world to unlock Layer 5 (Apotheosis).
         </div>
         <div className="flex justify-end pt-2">
           <Button variant="outline" onClick={() => setShow(false)}>Close</Button>
         </div>
       </DialogContent>
     </Dialog>
+  );
+}
+
+function TilePicker({ activeTileId, onSelect }: { activeTileId: string; onSelect: (id: string) => void }) {
+  return (
+    <div className="flex flex-wrap gap-1.5 mb-2">
+      {TILE_TYPES.map((t) => (
+        <button
+          key={t.id}
+          onClick={() => onSelect(t.id)}
+          className={`stat-card text-left p-1.5 flex items-center gap-1 ${activeTileId === t.id ? "border-amber-400/60 bg-amber-500/10" : ""}`}
+        >
+          <span className="text-lg">{t.icon}</span>
+          <div className="min-w-0">
+            <div className="text-[0.65rem] font-medium leading-none">{t.name}</div>
+            <div className="text-[0.55rem] text-muted-foreground mt-0.5 leading-tight">{t.bonus}</div>
+          </div>
+        </button>
+      ))}
+    </div>
   );
 }
 

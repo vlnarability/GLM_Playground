@@ -12,8 +12,18 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } f
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
-import { Lock, Triangle, CheckCircle2, Clock } from "lucide-react";
+import { Lock, Triangle, CheckCircle2, Clock, TrendingUp, TrendingDown, Coins } from "lucide-react";
 import { formatNumber, resourceName } from "../shared/format";
+
+const MARKET_RESOURCES = ["food", "water", "materials", "science", "gold", "energy"] as const;
+const MARKET_LABELS: Record<string, { icon: string; color: string }> = {
+  food: { icon: "🌾", color: "text-amber-300" },
+  water: { icon: "💧", color: "text-sky-300" },
+  materials: { icon: "🪨", color: "text-stone-300" },
+  science: { icon: "🔬", color: "text-cyan-300" },
+  gold: { icon: "🪙", color: "text-yellow-300" },
+  energy: { icon: "⚡", color: "text-violet-300" },
+};
 
 export function TranscendenceModal() {
   const show = useGameStore((s) => s.showTranscendence);
@@ -39,10 +49,22 @@ export function TranscendenceModal() {
   const toggleScript = useGameStore((s) => s.toggleScript);
   const performBloodPact = useGameStore((s) => s.performBloodPact);
 
+  // REBUILD L3 — Divine Market state
+  const marketPrices = useGameStore((s) => s.marketPrices || {});
+  const priceHistory = useGameStore((s) => s.priceHistory || {});
+  const marketOwned = useGameStore((s) => s.marketOwnedResources || {});
+  const marketTickTimer = useGameStore((s) => s.marketTickTimer || 0);
+  const marketBuy = useGameStore((s) => s.marketBuyResource);
+  const marketSell = useGameStore((s) => s.marketSellResource);
+  const marketOffering = useGameStore((s) => s.marketOffering);
+
   const isUnlocked = !!unlockedLayers.transcendence;
   const pactsUsedCount = BLOOD_PACTS.filter((p) => bloodPactsUsed[p.id]).length;
 
-  // QUICK WIN 3 — combo display: show count and time remaining in the 60s window or in the divine combo bonus
+  // Compute dividends (live from owned resource counts ≥ 100)
+  const dividendsPerSec = MARKET_RESOURCES.filter((r) => (marketOwned[r] || 0) >= 100).length;
+
+  // QUICK WIN 3 — combo display
   const comboActive = ritualComboTimer > 0;
   const secondsSinceLast = Math.max(0, time - lastRitualTime);
   const windowRemaining = comboActive ? ritualComboTimer : Math.max(0, 60 - secondsSinceLast);
@@ -50,17 +72,34 @@ export function TranscendenceModal() {
     ? `Divine Combo! +50% production — ${Math.ceil(ritualComboTimer)}s remaining`
     : `Combo: ${ritualComboCount}/3 (${Math.ceil(windowRemaining)}s remaining in window)`;
 
+  // Price-trend helper for an individual resource
+  function priceTrend(resId: string): "up" | "down" | "flat" {
+    const hist = priceHistory[resId] || [];
+    if (hist.length < 2) return "flat";
+    const last = hist[hist.length - 1];
+    const prev = hist[hist.length - 2];
+    if (last > prev * 1.05) return "up";
+    if (last < prev * 0.95) return "down";
+    return "flat";
+  }
+
+  function avgPrice(resId: string): number {
+    const hist = priceHistory[resId] || [];
+    if (hist.length === 0) return marketPrices[resId] || 10;
+    return hist.reduce((a: number, b: number) => a + b, 0) / hist.length;
+  }
+
   return (
     <Dialog open={show} onOpenChange={setShow}>
-      <DialogContent className="max-w-3xl max-h-[85vh] overflow-y-auto glass-strong">
+      <DialogContent className="max-w-4xl max-h-[88vh] overflow-y-auto glass-strong">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2 text-lg">
             <Triangle className="w-5 h-5" />
-            Layer 3 — Transcendence
+            Layer 3 — Transcendence (Divine Market)
           </DialogTitle>
           <DialogDescription className="flex items-center justify-between">
             <span>
-              Sacrifice resources for Divinity. Spend Divinity on rituals, scripts, and blood pacts. All 4 pacts unlock Genesis.
+              Buy low, sell high. Sacrifice resources for Divinity. All 4 Blood Pacts unlock Genesis.
             </span>
             <div className="flex gap-1">
               <Badge variant="outline" className="text-violet-300 border-violet-400/40">
@@ -81,6 +120,95 @@ export function TranscendenceModal() {
           </div>
         ) : (
           <div className="space-y-4">
+            {/* Divine Market — the new mini-game */}
+            <section className="stat-card">
+              <div className="flex items-center justify-between mb-2">
+                <div className="text-[0.7rem] uppercase tracking-wide text-amber-300/80 flex items-center gap-1">
+                  <Coins className="w-3 h-3" /> Divine Market
+                </div>
+                <div className="flex gap-1">
+                  <Badge variant="outline" className="text-[0.6rem] text-cyan-300 border-cyan-400/40">
+                    ⏱ next tick {Math.ceil(marketTickTimer)}s
+                  </Badge>
+                  <Badge variant="outline" className="text-[0.6rem] text-emerald-300 border-emerald-400/40">
+                    💎 Dividends: +{dividendsPerSec} Div/s
+                  </Badge>
+                </div>
+              </div>
+              <div className="text-[0.65rem] text-muted-foreground mb-2">
+                Prices random-walk ±30% every 10s. Owning 100+ of a resource grants +1 Divinity/s as a Divine-dend.
+                Offerings yield more Divinity when the price is HIGH.
+              </div>
+              <div className="space-y-1.5">
+                {MARKET_RESOURCES.map((resId) => {
+                  const price = marketPrices[resId] || 10;
+                  const hist = priceHistory[resId] || [];
+                  const trend = priceTrend(resId);
+                  const avg = avgPrice(resId);
+                  const owned = marketOwned[resId] || 0;
+                  const label = MARKET_LABELS[resId];
+                  const highPrice = price > avg * 1.1;
+                  const canBuy1 = divinity >= price;
+                  const canSell1 = owned >= 1;
+                  const canOffer10 = owned >= 10;
+                  // Max height for sparkline bars (relative to last 20 prices)
+                  const maxHist = Math.max(...hist, price, 1);
+                  return (
+                    <div key={resId} className="rounded-md border border-border bg-muted/10 p-2">
+                      <div className="flex items-center justify-between mb-1">
+                        <div className="flex items-center gap-1.5">
+                          <span className="text-lg">{label?.icon}</span>
+                          <span className={`text-xs font-medium ${label?.color || ""}`}>{resourceName(resId)}</span>
+                          <Badge variant="outline" className="text-[0.55rem]">{owned} owned</Badge>
+                          {owned >= 100 && (
+                            <Badge className="text-[0.55rem] bg-emerald-500/20 text-emerald-300 border-emerald-400/40">
+                              💎 +1 Div/s
+                            </Badge>
+                          )}
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <div className="text-right">
+                            <div className={`text-sm font-mono ${highPrice ? "text-emerald-300" : "text-foreground"}`}>
+                              {price.toFixed(1)} Div
+                            </div>
+                            <div className="text-[0.55rem] text-muted-foreground">
+                              avg {avg.toFixed(1)} {trend === "up" ? <TrendingUp className="inline w-2.5 h-2.5 text-emerald-400" /> : trend === "down" ? <TrendingDown className="inline w-2.5 h-2.5 text-rose-400" /> : "—"}
+                            </div>
+                          </div>
+                          {/* Sparkline */}
+                          <div className="flex items-end gap-0.5 h-8 w-24">
+                            {hist.slice(-20).map((h: number, i: number) => {
+                              const hgt = Math.max(2, (h / maxHist) * 100);
+                              const isLast = i === hist.length - 1;
+                              return (
+                                <div
+                                  key={i}
+                                  className={`flex-1 ${isLast ? "bg-amber-400" : "bg-cyan-400/40"}`}
+                                  style={{ height: `${hgt}%` }}
+                                  title={`${h.toFixed(1)}`}
+                                />
+                              );
+                            })}
+                          </div>
+                        </div>
+                      </div>
+                      <div className="grid grid-cols-3 gap-1">
+                        <Button size="sm" variant="default" disabled={!canBuy1} onClick={() => marketBuy(resId, 1)} className="h-7 text-[0.65rem]">
+                          Buy 1 ({price.toFixed(1)})
+                        </Button>
+                        <Button size="sm" variant="outline" disabled={!canSell1} onClick={() => marketSell(resId, 1)} className="h-7 text-[0.65rem]">
+                          Sell 1 (+{price.toFixed(1)})
+                        </Button>
+                        <Button size="sm" variant="ghost" disabled={!canOffer10} onClick={() => marketOffering(resId, 10)} className="h-7 text-[0.65rem]">
+                          Offer 10 (+{(10 * price * 1.5).toFixed(0)})
+                        </Button>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </section>
+
             {/* QUICK WIN 3 — Ritual combo progress banner */}
             <div className={`rounded-md border p-2 text-[0.7rem] flex items-center gap-2 ${comboActive ? "border-amber-400/60 bg-amber-500/10 text-amber-200" : "border-border bg-muted/20 text-muted-foreground"}`}>
               <span className="text-base">{comboActive ? "🌟" : "🔗"}</span>
@@ -89,9 +217,10 @@ export function TranscendenceModal() {
                 <span className="ml-auto text-[0.6rem] opacity-80">Last ritual: {RITUALS.find((r) => r.id === lastRitualId)?.name || lastRitualId}</span>
               )}
             </div>
-            {/* Offerings */}
+
+            {/* Classic offerings — preserved */}
             <section>
-              <div className="text-[0.7rem] uppercase tracking-wide text-muted-foreground mb-1">Offerings (sacrifice resources → Divinity)</div>
+              <div className="text-[0.7rem] uppercase tracking-wide text-muted-foreground mb-1">Offerings (sacrifice in-game resources → Divinity)</div>
               <div className="space-y-1.5">
                 {OFFERINGS.map((o) => {
                   const repeats = offeringsUsed[o.id] || 0;
@@ -150,12 +279,7 @@ export function TranscendenceModal() {
                       </div>
                       <div className="shrink-0 text-right">
                         <div className="text-[0.6rem] text-violet-300/80">{r.cost} Div</div>
-                        <Button
-                          size="sm"
-                          className="h-7 mt-1"
-                          disabled={!!purchased || !!active || !canAfford}
-                          onClick={() => performRitual(r.id)}
-                        >
+                        <Button size="sm" className="h-7 mt-1" disabled={!!purchased || !!active || !canAfford} onClick={() => performRitual(r.id)}>
                           {purchased ? "Owned" : active ? "Active" : "Perform"}
                         </Button>
                       </div>
@@ -172,11 +296,7 @@ export function TranscendenceModal() {
                 {SCRIPTS.map((sc) => {
                   const on = !!activeScripts[sc.id];
                   return (
-                    <button
-                      key={sc.id}
-                      onClick={() => toggleScript(sc.id)}
-                      className={`stat-card text-left p-2 ${on ? "border-amber-400/60 bg-amber-500/10" : ""}`}
-                    >
+                    <button key={sc.id} onClick={() => toggleScript(sc.id)} className={`stat-card text-left p-2 ${on ? "border-amber-400/60 bg-amber-500/10" : ""}`}>
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-1.5">
                           <span className="text-base">{sc.icon}</span>
@@ -210,12 +330,7 @@ export function TranscendenceModal() {
                       <div className="shrink-0 text-right">
                         <div className="text-[0.6rem] text-rose-300/80">-{p.popCost} pop</div>
                         <div className="text-[0.6rem] text-emerald-300/80">+{p.divinityGain} Div</div>
-                        <Button
-                          size="sm"
-                          className="h-7 mt-1"
-                          disabled={used || !canAffordPop}
-                          onClick={() => performBloodPact(p.id)}
-                        >
+                        <Button size="sm" className="h-7 mt-1" disabled={used || !canAffordPop} onClick={() => performBloodPact(p.id)}>
                           {used ? "Used" : "Pact"}
                         </Button>
                       </div>
@@ -229,7 +344,9 @@ export function TranscendenceModal() {
 
         <Separator className="my-2" />
         <div className="text-[0.65rem] text-muted-foreground px-1">
-          Offerings scale by ~10-35% per repeat. Temporary rituals decay on prestige. Perform all 4 Blood Pacts to unlock Layer 4 (Genesis).
+          <span className="text-amber-300">Divine Market</span> prices drift every 10s — buy low and sell high to multiply your Divinity.
+          Owning 100+ of any market resource grants a passive <span className="text-emerald-300">Divine-dend</span> of +1 Div/s.
+          Perform all 4 Blood Pacts to unlock Layer 4 (Genesis).
         </div>
         <div className="flex justify-end pt-2">
           <Button variant="outline" onClick={() => setShow(false)}>Close</Button>

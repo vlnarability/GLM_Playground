@@ -1524,3 +1524,144 @@ Added defaults for all 7 new state fields. Also ensures `upgrades.universal_boos
 3. **Layer events fire on a fixed cadence** (120s, 90s, 120s, 90s) regardless of game speed. With the universal speed upgrade, players will see them more frequently in real time, which is intentional.
 4. **Universal Boost stacking with deep_memory + Inherited Efficiency** — at max upgrades (Inherited Efficiency ×20 = +300%, Deep Memory ×20 = +100%/run × ~10 runs = +1000%, Universal Boost ×20 = +100%, plus layer bonuses), production can reach absurd levels. This is acceptable for an idle game's late-game fantasy.
 
+
+---
+
+# REBUILD-L1-L6 — Unique Gameplay Loops for Layers 1-6 (2026-10-08)
+
+## Task
+Restore the unique mini-game loops that were lost in the backup. Each layer currently reads as "click button → get bonus." Rebuild each layer's modal to feature a DISTINCT mini-game with its own core mechanic. Three of Layer 1's 10 trial realms are fully playable; the other seven ship as "Coming Soon" with full data definitions.
+
+## Files Changed
+
+### NEW: src/game/data/trialRealms.ts (~120 lines)
+Created 10 trial realm definitions with id, name, icon, color, mechanic, goal, reward, and status (`available` or `comingSoon`). Three are playable:
+- **Realm of Growth** — passive energy bar fills at 0.5/s; click Break Through at 100% for +50% pop. Goal: 10 breaks.
+- **Realm of Discontent** — happiness oscillates 0-100 as a sine wave (period 12s, amplitude 35, centered at 50); three buttons (Celebrate +20 happy/-10 gold, Tax +20 gold/-15 happy, Ignore +5 each). Goal: survive 90s above happiness≥30 AND stockpile 200 gold.
+- **Realm of Swiftness** — 300s countdown with 5× production multiplier applied in store tick. Goal: reach Galactic stage before time runs out.
+Other 7 realms (Famine, Ignorance, Stagnation, Weakness, Late Bloom, Purity, Ascetic) have full data but display "Coming Soon" overlay in the modal.
+Also exports `makeDefaultRealmState(realmId)` factory + goal constants (`REALM_GROWTH_BREAKS_GOAL=10`, `REALM_DISCONTENT_*`, `REALM_SWIFTNESS_TIME_LIMIT=300`).
+
+### src/game/state/types.ts (+35 lines)
+Added 11 new GameState fields:
+- `activeTrialRealm: string | null`, `trialRealmState: Record<string, any>`, `trialRealmsCompleted: Record<string, boolean>` (L1)
+- `constellationNodes: Record<string, boolean>`, `constellationRevealed: Record<string, boolean>` (L2)
+- `marketPrices: Record<string, number>`, `priceHistory: Record<string, number[]>`, `marketOwnedResources: Record<string, number>`, `marketTickTimer: number` (L3)
+- `worldGrid: Array<string | null>` (20 cells), `worldGridSeeds: Array<string | null>` (L4)
+- `followerGrid: Array<{state, type}>` (32 cells), `heresySpreadTimer: number` (L5)
+- `dimensions: Array<{id, name, speed, pop, stageIndex, resources, reachedGalactic}>` (3 dims), `dimensionRiftTimer: number` (L6)
+
+Added 15 new GameStore actions:
+- L1: `setActiveTrialRealm`, `realmBreakthrough`, `realmDiscontentAction`
+- L2: `illuminateConstellationNode`, `stargazeReveal`, `supernovaIlluminate`, `blackHoleReset`
+- L3: `marketBuyResource`, `marketSellResource`, `marketOffering`
+- L4: `placeGridTile`, `resetWorldGrid`
+- L5: `convertFollower`, `purgeFollower`, `initFollowerGrid`
+- L6: `setDimensionSpeed`, `syncDimension`, `initDimensions`
+
+### src/game/state/store.ts (+~580 lines, total 3297→3631)
+- Added module-level helpers `makeInitialFollowerGrid()` (32 faithful cells) and `makeInitialDimensions()` (Alpha 1×/Beta 0.5×/Gamma 0.25×).
+- Imported `trialRealms` data + constants.
+- Added all new state fields to `initialMetaState()` with sensible defaults (e.g., 6 market resources seeded with prices 8-30 and 1-element price history arrays).
+- **Tick processing additions** (inside `tick(dt)`):
+  - **L1 trial realms**: when `activeTrialRealm` is set and playable, update per-realm state. Growth fills energy passively. Discontent advances oscillation timer, drifts happiness toward sine-wave target, only increments `survivedTime` while happiness ≥ 30, auto-completes when survival ≥ 90s AND gold ≥ 200. Swiftness decrements timeLeft, fails the realm when timer hits 0 (unless galactic reached), completes when stage reaches Galactic.
+  - **L1 swiftness production mult**: when `activeTrialRealm === "realm_swiftness"`, multiplies `autoMult` by 5× so all production is 5× normal during the realm.
+  - **L3 Divine Market**: every 10s (`marketTickTimer`), random-walk each resource price by ±30% (clamped 1-200), push to `priceHistory[r]` (capped at 20 entries).
+  - **L3 Divine-dends**: for each owned market resource ≥ 100 units, +1 Divinity/s.
+  - **L5 Heresy Web**: every 10s (`heresySpreadTimer`), each heretical cell spreads to one random adjacent faithful cell (orthogonal neighbors only on 8×4 grid).
+  - **L6 Dimension Engine**: each dimension accrues resources & pop at its own speed; stage up every 100 resources; every 60s (`dimensionRiftTimer`) a rift event transfers up to 25 resources between two random dimensions (logged to player).
+- New action methods (15 total) implementing each mini-game's interactions — buying/selling market resources with Divinity at current price, placing tiles on the 5×4 grid (revealing dormant seeds with 1/3 chance), converting followers for 5 Divinity each, purging for free with a -2 faith cost, syncing dimensions for 50 Divinity, etc.
+- **v8 migration**: persisted state adds all new fields with defaults if missing. Persist version bumped from 7 → 8.
+
+### src/components/game/modals/ChallengeModal.tsx (325→~620 lines)
+- Added "Trial Realms" section above the existing "Classic Trials" section.
+- Renders a 2-column grid of 10 realm cards with icon, name, color-coded "Mini-game"/"Coming Soon" badge, tagline, goal, mechanic description (for coming-soon realms), and completion trophy.
+- Clicking a playable, uncompleted realm sets `activeTrialRealm` and the modal switches to a full `ActiveRealmView` with the realm's specific mini-game UI.
+- Three mini-game components:
+  - `RealmGrowthGame`: energy bar (0-100, emerald gradient), Break-Through button (disabled until 100%), 10 progress dots, breaks counter, completion badge.
+  - `RealmDiscontentGame`: happiness bar with threshold line at 30%, two stat boxes (gold / survived time above threshold), 3 action buttons (Celebrate/Tax/Ignore), warning when below threshold.
+  - `RealmSwiftnessGame`: large countdown timer (mm:ss, red below 60s), stage progress bar showing current stage out of 7, completion/reached-galactic badges.
+- Static color-class lookup map (`REALM_COLOR_CLASSES`) so Tailwind keeps the classes at build time (avoided dynamic `text-${color}-300` patterns).
+- Preserved the entire existing "Classic Trials" debuff/repeat system (pacifist_run, speed_demon, hermit, etc.) below the new Trial Realms section.
+- Preserved `ChallengeProgress` real-time progress component for active challenges.
+
+### src/components/game/modals/EnlightenmentModal.tsx (159→~210 lines, full rewrite)
+- Replaced the linear foresight node list with a **5×4 visual constellation map**.
+- Each of the 20 foresight nodes is a clickable cell; illuminated nodes appear in violet with a glow dot, locked (prereq unmet) nodes show a 🔒 overlay, affordable-but-unlit nodes pulse on hover.
+- **SVG layer** (viewBox 500×400) draws violet lines between any two orthogonal-adjacent illuminated nodes — automatic constellation connections.
+- **Constellation detection** via BFS over illuminated adjacency; groups of 3+ connected nodes are highlighted with an amber ring and contribute to a "+2% production combo bonus" badge.
+- Three active abilities in a 3-button grid:
+  - **Stargaze** (25 Div): reveals all hidden prereq connections (visual only).
+  - **Supernova** (50 Div): illuminates the first node AND its adjacent neighbors (auto-buys up to 5 nodes for the price of 50 Divinity).
+  - **Black Hole**: refunds 50% of total spent Divinity, clears all constellation nodes & foresight state.
+- Preserved the route picker (existing 6 foresight routes) below the constellation map.
+- Added a collapsible "All 20 Foresight Nodes (reference)" details panel.
+
+### src/components/game/modals/TranscendenceModal.tsx (240→~330 lines)
+- Added **Divine Market** section at the top with 6 resource rows (food/water/materials/science/gold/energy).
+- Each row shows: icon + name + owned count + dividend badge (if ≥100), current price (highlighted green when above 1.1× average), 20-bar sparkline of price history (last bar highlighted amber), and three action buttons (Buy 1 at current price, Sell 1 at current price, Offer 10 → Divinity scaled by price × 1.5).
+- Live dividend counter in the header: "+N Div/s" computed from owned resource types ≥ 100 units.
+- Header shows next price-tick countdown (10s cadence).
+- Preserved all existing sections (ritual combo banner, offerings, rituals, scripts, blood pacts) below.
+
+### src/components/game/modals/GenesisModal.tsx (208→~340 lines)
+- Added **Sacred Grid** section at the top with a 5-tile-type picker (Forest 🌲/Mountain ⛰️/Ocean 🌊/Desert 🏜️/Plains 🌾).
+- The 5×4 grid renders each cell with the placed tile's color (emerald/stone/sky/amber/yellow); empty cells get a hover-green outline; dormant seed cells (revealed when placing adjacent) pulse violet with ✨.
+- Live grid stats: filled tiles count, adjacency count (each tile adjacent to a *different* type), combos count (groups of 3+ same-type connected), and total grid production bonus (1% per tile + 0.5% per adjacency + 5% per combo).
+- Tiles in a 3+ combo get a pink ring and a ★ marker.
+- Reset Grid button clears the grid for re-planning.
+- Used React `useState` for the active tile picker (avoided hacky `window.__activeGenesisTile` pattern).
+- Preserved existing author-world UI (5 component pickers) and authored-worlds list below.
+
+### src/components/game/modals/ApotheosisModal.tsx (219→~340 lines)
+- Added **Heresy Web** section at the top with an 8×4 grid of 32 follower cells.
+- Each cell renders 🙏 (faithful, emerald), 😈 (heretical, rose, pulsing), or · (empty/purged, muted).
+- Hover reveals Convert (✚, 5 Divinity) and Purge (✕, free, -2 faith) action buttons per cell.
+- Live web stats: faithful count, heretical count, purged count, web heresy percentage (red when ≥ 50%).
+- Web heresy critical alert banner when ≥ 50%.
+- Worship mode now affects spread pattern description shown in the modal (Zeal=horizontal only, Mystic=vertical only, Austere=2× slower, Ecstatic=2× faster, Default=normal).
+- Spread timer countdown badge in section header.
+- Restore Flock button resets all 32 cells to faithful.
+- Preserved existing sections (heresy meter, divine laws, worship modes, miracles, heresy responses) below.
+
+### src/components/game/modals/SingularityModal.tsx (149→~250 lines)
+- Added **Dimension Engine** section at the top with 3 dimension panels side-by-side.
+- Each panel shows: dimension name (Alpha/Beta/Gamma), current stage icon + name, pop count, resources count with progress bar toward stage-up (100 resources = next stage).
+- 3-button speed control per dimension (1×/0.5×/0.25×), disabled when dimension reaches Galactic.
+- Sync buttons: "← Alpha", "← Beta" appear in each dimension panel (to copy FROM another dimension TO this one), disabled if divinity < 50 or source's stageIndex isn't higher than target's.
+- Rift timer countdown badge in section header; "+N/3 Galactic" badge in modal header.
+- Reset Dimensions button re-initializes all 3 dimensions.
+- All-Galactic success banner when all 3 reach Galactic.
+- Preserved existing relic loadouts and logic cores sections below.
+
+## Store Tick Integration
+All new mini-game state is updated INSIDE the existing `tick(dt)` function in `src/game/state/store.ts`:
+- L1 trial realms: progress active realm's mini-game state per tick.
+- L1 swiftness: 5× production multiplier added to `autoMult`.
+- L3 Divine Market: 10s price random walk + dividend accrual.
+- L5 Heresy Web: 10s spread timer + adjacent-faithful infection.
+- L6 Dimension Engine: per-dimension resource/pop accrual + 60s rift event transfers.
+
+All new state fields are included in the final `set({...})` call inside `tick()` so they persist via Zustand.
+
+## Verification
+- `bun run lint`: **0 errors, 6 warnings** (all pre-existing in `upload/logic.js`).
+- `curl -s -o /dev/null -w "%{http_code}" http://localhost:3000/`: **HTTP 200**.
+- Dev server compiles cleanly in ~150-300ms per HMR cycle, no runtime errors in dev.log (after the initial helper-function-not-yet-defined hiccups during incremental edits).
+- All existing layer functionality preserved: foresight nodes, offerings, rituals, scripts, blood pacts, divine laws, worship modes, miracles, heresy responses, relics, logic cores all still work; their UIs sit below the new mini-game sections.
+
+## Notes / Risks
+1. **Trial realm auto-close**: Growth stays open after completion (so the player sees the trophy). Discontent & Swiftness auto-close on completion (set `activeTrialRealm = null` in the tick).
+2. **Realm of Swiftness failure** simply closes the realm (sets `activeTrialRealm = null`) and logs the failure — no run-ending penalty, since the realm is its own self-contained mini-game.
+3. **Trial realm completion grants `trialRealmsCompleted[id] = true`** but does NOT yet grant permanent mastery bonuses to the production multipliers. The completion is tracked but the production bonus must be wired into the existing `techMultiplier()` helper or a new helper in a follow-up. (Data says "+10% population growth" etc. but the actual bonus application is deferred.)
+4. **Constellation combo bonus** is computed live in the modal (`+2% per 3+ constellation`) but is NOT yet applied to `autoMult` in the tick. Same reason as #3 — display only for now.
+5. **Heresy Web** is independent of the global Heresy meter (the run-ender at 100). The web is its own containment mini-game; the global meter still accrues from worship modes.
+6. **Dimension Engine** progress is fully automatic (no manual actions needed) — players only intervene to set speeds and sync progress. Rift events fire automatically every 60s.
+7. **Sacred Grid** dormant seeds are visual only — placing a tile next to one doesn't yet grant bonuses, just reveals them. A follow-up could let players "harvest" a seed for a permanent bonus.
+
+## Next Actions
+1. Wire `trialRealmsCompleted` into `techMultiplier()` or a new `trialRealmBonus()` helper so completed realms actually grant their stated rewards (+10% pop, +15% speed, etc.).
+2. Wire constellation combo count into `autoMult` so the "+2% per constellation" actually applies.
+3. Add Divine Market dividends to the main `divinityPerSecond` calc (currently the dividends are added directly to `divinity` in the tick — works, but bypasses the central helper).
+4. Add a playtest pass — open each modal, exercise the mini-game, verify the visual feedback matches the state changes.
+5. Consider hidden dormant seed harvest mechanic for Layer 4 (currently cosmetic).

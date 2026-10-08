@@ -317,6 +317,37 @@ export interface GameState {
     divine_whim: number;
     heresy_surge: number;
   };
+
+  // ===== REBUILD: LAYERS 1-6 UNIQUE GAMEPLAY LOOPS =====
+  // Layer 1 — Trial Realms (mini-games)
+  activeTrialRealm: string | null;              // currently open realm id
+  trialRealmState: Record<string, any>;        // per-realm runtime state
+  trialRealmsCompleted: Record<string, boolean>;
+  // Layer 2 — Constellation Map (visual foresight grid)
+  constellationNodes: Record<string, boolean>; // node id → illuminated
+  constellationRevealed: Record<string, boolean>; // connections revealed by Stargaze
+  // Layer 3 — Divine Market (price simulation)
+  marketPrices: Record<string, number>;        // resource id → current price
+  priceHistory: Record<string, number[]>;     // resource id → last N prices (sparkline)
+  marketOwnedResources: Record<string, number>; // resource id → units owned
+  marketTickTimer: number;                     // seconds until next price tick
+  // Layer 4 — Sacred Grid (tile placement)
+  worldGrid: Array<string | null>;             // 20 cells (5×4); tile type id or null
+  worldGridSeeds: Array<string | null>;        // hidden dormant seeds revealed on adjacency
+  // Layer 5 — Heresy Web (containment grid)
+  followerGrid: Array<{ state: string; type: string }>; // 32 cells (8×4): "faithful"|"heretical"|"empty"; type id
+  heresySpreadTimer: number;                   // seconds until next spread tick
+  // Layer 6 — Dimension Engine (parallel dimensions)
+  dimensions: Array<{
+    id: number;
+    name: string;
+    speed: number;       // 1 | 0.5 | 0.25
+    pop: number;
+    stageIndex: number;
+    resources: number;   // abstract pooled resource
+    reachedGalactic: boolean;
+  }>;
+  dimensionRiftTimer: number;                  // seconds until next rift event
 }
 
 export interface GameStore extends GameState {
@@ -416,4 +447,35 @@ export interface GameStore extends GameState {
   useActiveAbility: (layerId: string) => void;
   // WIN 5 — Universal shop upgrade purchase (spends Prestige Points)
   buyUniversalUpgrade: (upgradeId: string) => void;
+
+  // ===== REBUILD: LAYERS 1-6 UNIQUE GAMEPLAY LOOPS =====
+  // Layer 1 — Trial Realms
+  setActiveTrialRealm: (realmId: string | null) => void;
+  realmBreakthrough: () => void;             // Realm of Growth click
+  realmDiscontentAction: (action: "celebrate" | "tax" | "ignore") => void;
+
+  // Layer 2 — Constellation Map
+  illuminateConstellationNode: (nodeId: string) => void;
+  stargazeReveal: () => void;                // active ability: reveal connections
+  supernovaIlluminate: (nodeId: string) => void; // illuminate adjacent
+  blackHoleReset: () => void;                // refund + reset
+
+  // Layer 3 — Divine Market
+  marketBuyResource: (resourceId: string, qty: number) => void;
+  marketSellResource: (resourceId: string, qty: number) => void;
+  marketOffering: (resourceId: string, qty: number) => void; // spend resource → gain Divinity scaled by price
+
+  // Layer 4 — Sacred Grid
+  placeGridTile: (cellIndex: number, tileType: string) => void;
+  resetWorldGrid: () => void;
+
+  // Layer 5 — Heresy Web
+  convertFollower: (cellIndex: number) => void;
+  purgeFollower: (cellIndex: number) => void;
+  initFollowerGrid: () => void;
+
+  // Layer 6 — Dimension Engine
+  setDimensionSpeed: (dimId: number, speed: number) => void;
+  syncDimension: (fromId: number, toId: number) => void;
+  initDimensions: () => void;
 }
