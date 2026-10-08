@@ -2,61 +2,55 @@
 
 import { useGameStore } from "@/game/state/store";
 import {
-  TESTAMENT_CLAUSES,
-  CANONIZATIONS,
-  PERMANENCE_WEAVES,
+  UNIVERSE_SLOTS,
   ENDING_CHOICES,
-  testamentClauseBonus,
-  canonizationBonus,
-  permanenceWeaveBonus,
+  universeSlotBonus,
+  keptGodsBonus,
   cosmicBoonBonus,
+  isEternityComplete,
 } from "@/game/data/eternity";
+import { MINOR_GODS, MINOR_GOD_MAP } from "@/game/data/divinity_layer";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
-import { Lock, Sparkles, CheckCircle2, Scroll, Crown, RefreshCw, Star } from "lucide-react";
-import { formatNumber } from "../shared/format";
+import { Lock, Sparkles, CheckCircle2, Star, RefreshCw } from "lucide-react";
 
 export function EternityModal() {
   const show = useGameStore((s) => s.showEternity);
   const setShow = useGameStore((s) => s.setShowEternity);
   const unlockedLayers = useGameStore((s) => s.unlockedLayers);
-  const testamentClauses = useGameStore((s) => s.testamentClauses);
-  const purchasedClauses = useGameStore((s) => s.purchasedTestamentClauses || {});
-  const activeCanonizations = useGameStore((s) => s.activeCanonizations || {});
-  const activeWeaves = useGameStore((s) => s.activePermanenceWeaves || {});
+  const universeRules = useGameStore((s) => s.universeRules || Array(UNIVERSE_SLOTS.length).fill(null));
+  const keptGods = useGameStore((s) => s.keptGods || []);
+  const alliances = useGameStore((s) => s.alliances || {});
   const chosenEnding = useGameStore((s) => s.chosenEnding);
   const cosmicBoonStacks = useGameStore((s) => s.cosmicBoonStacks || 0);
 
-  const purchaseTestamentClause = useGameStore((s) => s.purchaseTestamentClause);
-  const toggleCanonization = useGameStore((s) => s.toggleCanonization);
-  const togglePermanenceWeave = useGameStore((s) => s.togglePermanenceWeave);
+  const setUniverseRule = useGameStore((s) => s.setUniverseRule);
+  const toggleKeptGod = useGameStore((s) => s.toggleKeptGod);
   const chooseEnding = useGameStore((s) => s.chooseEnding);
 
   const isUnlocked = !!unlockedLayers.eternity;
-  const testB = testamentClauseBonus(purchasedClauses);
-  const canonB = canonizationBonus(activeCanonizations);
-  const weaveB = permanenceWeaveBonus(activeWeaves);
+  const universeB = universeSlotBonus(universeRules);
+  const keptB = keptGodsBonus(keptGods);
   const boon = cosmicBoonBonus(cosmicBoonStacks);
-  const purchasedClauseCount = TESTAMENT_CLAUSES.filter((c) => purchasedClauses[c.id]).length;
-  const activeCanonCount = CANONIZATIONS.filter((c) => activeCanonizations[c.id]).length;
-  const activeWeaveCount = PERMANENCE_WEAVES.filter((w) => activeWeaves[w.id]).length;
+  const alliedGods = MINOR_GODS.filter((g) => alliances[g.id]);
+  const canReset = universeB.filledCount >= UNIVERSE_SLOTS.length;
 
   return (
     <Dialog open={show} onOpenChange={setShow}>
-      <DialogContent className="max-w-3xl max-h-[85vh] overflow-y-auto glass-strong">
+      <DialogContent className="max-w-4xl max-h-[88vh] overflow-y-auto glass-strong">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2 text-lg">
             <Star className="w-5 h-5" />
-            Layer 10 — Eternity
+            Layer 10 — Eternity (Ascension)
           </DialogTitle>
           <DialogDescription className="flex items-center justify-between">
             <span>
-              Enact Testament Clauses, Canonize events, weave Permanence across resets. Choose an Ending to complete the layer.
+              Define the rules of your new universe. Choose your pantheon. Pick an ending to ascend.
             </span>
             <Badge variant="outline" className="text-amber-300 border-amber-400/40">
-              {formatNumber(testamentClauses, 0)} Clauses
+              {universeB.filledCount}/{UNIVERSE_SLOTS.length} slots filled
             </Badge>
           </DialogDescription>
         </DialogHeader>
@@ -64,56 +58,55 @@ export function EternityModal() {
         {!isUnlocked ? (
           <div className="text-center text-muted-foreground py-10">
             <Lock className="w-8 h-8 mx-auto mb-2 opacity-50" />
-            <p className="text-sm">Eternity is sealed.</p>
-            <p className="text-xs mt-1">Resolve all 4 forks AND repay every debt taken (Layer 9 — Infinity) to unlock Eternity.</p>
+            <p className="text-sm">Universe Creation is sealed.</p>
+            <p className="text-xs mt-1">Defeat all 3 Old Gods (Layer 9 — Divine War) to unlock Ascension.</p>
           </div>
         ) : (
           <div className="space-y-4">
+            {/* Bonuses */}
             <div className="stat-card">
               <div className="text-[0.7rem] uppercase tracking-wide text-muted-foreground mb-1">
-                {purchasedClauseCount}/8 clauses · {activeCanonCount}/3 canonizations · {activeWeaveCount}/3 weaves · {cosmicBoonStacks} Cosmic Boon stack(s)
+                {universeB.filledCount}/8 slots filled · {keptGods.length} gods kept · {cosmicBoonStacks} Cosmic Boon stack(s)
               </div>
               <div className="flex flex-wrap gap-1">
-                <Badge variant="outline" className="text-cyan-300 border-cyan-400/40">+{((testB.productionMult + canonB.productionMult + weaveB.productionMult + boon) * 100).toFixed(0)}% prod</Badge>
-                <Badge variant="outline" className="text-amber-300 border-amber-400/40">+{((testB.capMult + canonB.capMult + weaveB.capMult) * 100).toFixed(0)}% cap</Badge>
-                <Badge variant="outline" className="text-emerald-300 border-emerald-400/40">+{((testB.epMult + canonB.epMult + weaveB.epMult) * 100).toFixed(0)}% EP</Badge>
-                <Badge variant="outline" className="text-violet-300 border-violet-400/40">+{((testB.popGrowthMult + canonB.popGrowthMult + weaveB.popGrowthMult) * 100).toFixed(0)}% pop</Badge>
+                <Badge variant="outline" className="text-cyan-300 border-cyan-400/40">+{((universeB.productionMult + keptB.productionMult + boon) * 100).toFixed(0)}% prod</Badge>
+                <Badge variant="outline" className="text-amber-300 border-amber-400/40">+{((universeB.capMult + keptB.capMult) * 100).toFixed(0)}% cap</Badge>
+                <Badge variant="outline" className="text-emerald-300 border-emerald-400/40">+{((universeB.epMult + keptB.epMult) * 100).toFixed(0)}% EP</Badge>
+                <Badge variant="outline" className="text-violet-300 border-violet-400/40">+{((universeB.popGrowthMult + keptB.popGrowthMult) * 100).toFixed(0)}% pop</Badge>
               </div>
             </div>
 
-            {/* Testament Clauses */}
+            {/* Universe Creation Slots */}
             <section>
               <div className="text-[0.7rem] uppercase tracking-wide text-muted-foreground mb-1 flex items-center gap-1">
-                <Scroll className="w-3 h-3" /> Testament Clauses (permanent, cost Clauses)
+                <Sparkles className="w-3 h-3" /> Universe Creation — define the rules of your new cosmos
               </div>
-              <div className="space-y-1.5">
-                {TESTAMENT_CLAUSES.map((c) => {
-                  const purchased = !!purchasedClauses[c.id];
-                  const canAfford = testamentClauses >= c.cost;
+              <div className="space-y-2">
+                {UNIVERSE_SLOTS.map((slot, idx) => {
+                  const chosenId = universeRules[idx];
+                  const chosen = slot.options.find((o) => o.id === chosenId);
                   return (
-                    <div key={c.id} className={`stat-card flex items-center gap-3 py-2 ${purchased ? "border-emerald-400/40" : ""}`}>
-                      <span className="text-xl shrink-0">{c.icon}</span>
-                      <div className="min-w-0 flex-1">
-                        <div className="flex items-center gap-2">
-                          <span className="text-sm font-semibold">{c.name}</span>
-                          {purchased && (
-                            <Badge className="text-[0.6rem] bg-emerald-500/20 text-emerald-300 border-emerald-400/40">
-                              <CheckCircle2 className="w-2.5 h-2.5 mr-0.5" /> Enacted
-                            </Badge>
-                          )}
-                        </div>
-                        <div className="text-[0.65rem] text-muted-foreground leading-snug">{c.desc}</div>
+                    <div key={slot.id} className={`stat-card p-2 ${chosen ? "border-emerald-400/40" : ""}`}>
+                      <div className="flex items-center gap-2 mb-1">
+                        <span className="text-lg">{slot.icon}</span>
+                        <span className="text-xs font-semibold">{slot.name}</span>
+                        {chosen && <CheckCircle2 className="w-2.5 h-2.5 text-emerald-400 ml-auto" />}
                       </div>
-                      <div className="shrink-0 text-right">
-                        <div className="text-[0.6rem] text-amber-300/80">{c.cost} Clauses</div>
-                        <Button
-                          size="sm"
-                          className="h-7 mt-1"
-                          disabled={purchased || !canAfford}
-                          onClick={() => purchaseTestamentClause(c.id)}
-                        >
-                          {purchased ? "Enacted" : "Enact"}
-                        </Button>
+                      <div className="text-[0.6rem] text-muted-foreground mb-1.5">{slot.desc}</div>
+                      <div className="grid grid-cols-2 gap-1">
+                        {slot.options.map((opt) => {
+                          const selected = chosenId === opt.id;
+                          return (
+                            <button
+                              key={opt.id}
+                              onClick={() => setUniverseRule(idx, opt.id)}
+                              className={`stat-card text-left p-1.5 ${selected ? "border-amber-400/60 bg-amber-500/10" : "hover:border-amber-400/40"}`}
+                            >
+                              <div className="text-[0.65rem] font-medium">{opt.label}</div>
+                              <div className="text-[0.55rem] text-muted-foreground mt-0.5 leading-tight">{opt.desc}</div>
+                            </button>
+                          );
+                        })}
                       </div>
                     </div>
                   );
@@ -121,62 +114,43 @@ export function EternityModal() {
               </div>
             </section>
 
-            {/* Canonizations */}
+            {/* Pantheon — Keep / Absorb Allied Gods */}
             <section>
               <div className="text-[0.7rem] uppercase tracking-wide text-muted-foreground mb-1 flex items-center gap-1">
-                <Crown className="w-3 h-3" /> Canonizations (declare events/archetypes eternal — costs Clauses to activate)
+                <Star className="w-3 h-3" /> Your Pantheon — choose which allied gods to keep
               </div>
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-1.5">
-                {CANONIZATIONS.map((c) => {
-                  const active = !!activeCanonizations[c.id];
-                  const canAfford = testamentClauses >= c.cost;
-                  return (
-                    <button
-                      key={c.id}
-                      onClick={() => active || canAfford ? toggleCanonization(c.id) : undefined}
-                      disabled={!active && !canAfford}
-                      className={`stat-card text-left p-2 ${active ? "border-amber-400/60 bg-amber-500/10" : ""}`}
-                    >
-                      <div className="flex items-center gap-1">
-                        <span className="text-base">{c.icon}</span>
-                        <span className="text-xs font-medium">{c.name}</span>
-                        {active && <CheckCircle2 className="w-2.5 h-2.5 text-amber-300 ml-auto" />}
-                      </div>
-                      <div className="text-[0.6rem] text-muted-foreground mt-0.5 leading-snug">{c.desc}</div>
-                      <div className="text-[0.55rem] text-amber-300/80 mt-0.5">{c.cost} Clauses</div>
-                    </button>
-                  );
-                })}
-              </div>
-            </section>
-
-            {/* Permanence Weaves */}
-            <section>
-              <div className="text-[0.7rem] uppercase tracking-wide text-muted-foreground mb-1 flex items-center gap-1">
-                <Sparkles className="w-3 h-3" /> Permanence Weaves (pin laws/modes/routes through resets)
-              </div>
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-1.5">
-                {PERMANENCE_WEAVES.map((w) => {
-                  const active = !!activeWeaves[w.id];
-                  const canAfford = testamentClauses >= w.cost;
-                  return (
-                    <button
-                      key={w.id}
-                      onClick={() => active || canAfford ? togglePermanenceWeave(w.id) : undefined}
-                      disabled={!active && !canAfford}
-                      className={`stat-card text-left p-2 ${active ? "border-amber-400/60 bg-amber-500/10" : ""}`}
-                    >
-                      <div className="flex items-center gap-1">
-                        <span className="text-base">{w.icon}</span>
-                        <span className="text-xs font-medium">{w.name}</span>
-                        {active && <CheckCircle2 className="w-2.5 h-2.5 text-amber-300 ml-auto" />}
-                      </div>
-                      <div className="text-[0.6rem] text-muted-foreground mt-0.5 leading-snug">{w.desc}</div>
-                      <div className="text-[0.55rem] text-amber-300/80 mt-0.5">{w.cost} Clauses</div>
-                    </button>
-                  );
-                })}
-              </div>
+              {alliedGods.length === 0 ? (
+                <div className="text-center text-muted-foreground py-4 text-sm">
+                  No allied gods. Form alliances in Layer 8 to choose a pantheon.
+                </div>
+              ) : (
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-1.5">
+                  {alliedGods.map((g) => {
+                    const kept = keptGods.includes(g.id);
+                    return (
+                      <button
+                        key={g.id}
+                        onClick={() => toggleKeptGod(g.id)}
+                        className={`stat-card text-left p-2 ${kept ? "border-amber-400/60 bg-amber-500/10" : "hover:border-amber-400/40"}`}
+                      >
+                        <div className="flex items-center gap-1">
+                          <span className="text-base">{g.icon}</span>
+                          <span className="text-xs font-medium truncate">{g.name}</span>
+                          {kept && <CheckCircle2 className="w-2.5 h-2.5 text-amber-300 ml-auto" />}
+                        </div>
+                        <div className="text-[0.55rem] text-muted-foreground mt-0.5 leading-snug">
+                          {kept ? "Keep in new pantheon" : "Click to keep (others absorbed)"}
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+              {keptGods.length > 0 && (
+                <div className="text-[0.6rem] text-amber-300/80 mt-1">
+                  {keptGods.length} god(s) will be kept. {alliedGods.length - keptGods.length} will be absorbed (their followers bring peace).
+                </div>
+              )}
             </section>
 
             {/* Ending Choices */}
@@ -187,12 +161,13 @@ export function EternityModal() {
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
                 {ENDING_CHOICES.map((e) => {
                   const chosen = chosenEnding === e.id;
+                  const disabled = !!chosenEnding || (e.id === "reset" && !canReset);
                   return (
                     <button
                       key={e.id}
-                      onClick={() => !chosen && chooseEnding(e.id)}
-                      disabled={!!chosenEnding}
-                      className={`stat-card text-left p-2 ${chosen ? "border-amber-400/60 bg-amber-500/10" : chosenEnding ? "opacity-50" : "hover:border-amber-400/40"}`}
+                      onClick={() => !disabled && !chosen && chooseEnding(e.id)}
+                      disabled={disabled}
+                      className={`stat-card text-left p-2 ${chosen ? "border-amber-400/60 bg-amber-500/10" : disabled ? "opacity-50" : "hover:border-amber-400/40"}`}
                     >
                       <div className="flex items-center gap-1">
                         <span className="text-base">{e.icon}</span>
@@ -200,6 +175,11 @@ export function EternityModal() {
                         {chosen && <CheckCircle2 className="w-2.5 h-2.5 text-amber-300 ml-auto" />}
                       </div>
                       <div className="text-[0.6rem] text-muted-foreground mt-0.5 leading-snug">{e.desc}</div>
+                      {e.id === "reset" && !canReset && !chosen && (
+                        <div className="text-[0.55rem] text-rose-300/80 mt-1">
+                          Requires all 8 universe slots filled ({universeB.filledCount}/8).
+                        </div>
+                      )}
                     </button>
                   );
                 })}
@@ -217,7 +197,7 @@ export function EternityModal() {
         <Separator className="my-2" />
         <div className="text-[0.65rem] text-muted-foreground px-1 flex items-center gap-1">
           <RefreshCw className="w-3 h-3" />
-          Choosing an Ending completes the layer. Reset Universe grants a permanent Cosmic Boon (+10% production per stack). Clauses, canonizations, and weaves persist forever.
+          Fill all 8 universe slots to enable "Reset Universe". Each reset grants a permanent +10% production Cosmic Boon that stacks.
         </div>
         <div className="flex justify-end pt-2">
           <Button variant="outline" onClick={() => setShow(false)}>Close</Button>
@@ -226,3 +206,7 @@ export function EternityModal() {
     </Dialog>
   );
 }
+
+// Mark unused imports as used (for tree-shaking safety)
+void MINOR_GOD_MAP;
+void isEternityComplete;

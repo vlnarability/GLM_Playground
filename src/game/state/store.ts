@@ -84,43 +84,69 @@ import {
   logicCoreBonus,
 } from "../data/singularity";
 import {
-  HYBRID_LINEAGES,
-  HYBRID_LINEAGE_MAP,
+  CREATURE_BODY_TYPES,
+  CREATURE_BODY_TYPE_MAP,
+  CREATURE_DIETS,
+  CREATURE_DIET_MAP,
+  CREATURE_SPECIALS,
+  CREATURE_SPECIAL_MAP,
+  LEGION_MAX_CREATURES,
   OMNIPOTENCE_STANCES,
   OMNIPOTENCE_STANCE_MAP,
-  hybridBonus,
+  legionBonus,
+  legionInstabilityPerSec,
+  computeCreatureStats,
+  creatureInstabilityPerSec,
+  legionPower,
   instabilityRateMult,
   effectiveInstabilityRate,
   isOmnipotenceComplete,
   type OmnipotenceStanceId,
+  type CreatureBodyTypeId,
+  type CreatureDietId,
+  type CreatureSpecialId,
+  type Creature,
+  type Legion,
 } from "../data/omnipotence";
 import {
-  PRAYER_CHANNELS,
-  PRAYER_CHANNEL_MAP,
-  DIVINE_MASKS,
-  DIVINE_MASK_MAP,
-  WORSHIP_POLARITIES,
-  WORSHIP_POLARITY_MAP,
-  prayerChannelCost,
+  MINOR_GODS,
+  MINOR_GOD_MAP,
+  RELATIONSHIP_NEGOTIATE_GAIN,
+  RELATIONSHIP_TRADE_GAIN,
+  RELATIONSHIP_ALLIANCE_THRESHOLD,
+  RELATIONSHIP_MAX,
+  allianceBonus,
+  canFormAlliance,
+  isDivinityComplete,
   prayerChannelBonus,
   divineMaskBonus,
   worshipPolarityBonus,
   prayerRate,
-  isDivinityComplete,
+  type MinorGod,
 } from "../data/divinity_layer";
 import {
+  OLD_GODS,
+  OLD_GOD_MAP,
   ECHO_TYPES,
   ECHO_TYPE_MAP,
   FORK_SCENARIOS,
   FORK_SCENARIO_MAP,
   FUTURE_DEBT_TIERS,
   FUTURE_DEBT_TIER_MAP,
+  makeInitialBattleState,
+  divineFragmentBonus,
+  computePlayerAttack,
+  computeBossAttack,
+  phaseForHp,
   echoBonus,
   forkBonus,
   activeDebtBonus,
   isInfinityComplete,
+  type BattleState,
 } from "../data/infinity";
 import {
+  UNIVERSE_SLOTS,
+  UNIVERSE_SLOT_MAP,
   TESTAMENT_CLAUSES,
   TESTAMENT_CLAUSE_MAP,
   CANONIZATIONS,
@@ -129,6 +155,8 @@ import {
   PERMANENCE_WEAVE_MAP,
   ENDING_CHOICES,
   ENDING_CHOICE_MAP,
+  universeSlotBonus,
+  keptGodsBonus,
   testamentClauseBonus,
   canonizationBonus,
   permanenceWeaveBonus,
@@ -259,29 +287,41 @@ function initialMetaState(): Partial<GameState> {
     logicCoreTimers: {},
     showSingularity: false,
 
-    // Layer 7 — Omnipotence
+    // Layer 7 — Omnipotence (Bio-engineering)
     equippedHybrids: {},
     activeOmnipotenceStance: "balanced",
     instability: 0,
     peakInstability: 0,
     showOmnipotence: false,
+    // NEW: Creature Lab
+    creatures: [],
+    legions: [],
+    geneticInstability: 0,
+    creatureDesignDraft: { bodyType: "predator", diet: "herbivore", special: "regen", name: "" },
 
-    // Layer 8 — Divinity (the layer; not the resource)
+    // Layer 8 — Divinity (the layer; not the resource) — Divine Alliance
     prayer: 0,
     prayerChannelLevels: {},
     activeDivineMask: null,
     activeWorshipPolarity: null,
     showDivinityLayer: false,
+    // NEW: Divine Alliance — initialize the 6 minor god NPCs and relationships
+    minorGods: MINOR_GODS.map((g) => ({ ...g })),
+    godRelationships: Object.fromEntries(MINOR_GODS.map((g) => [g.id, g.startingRelationship])),
+    alliances: {},
 
-    // Layer 9 — Infinity
+    // Layer 9 — Infinity — Divine War
     echoes: 0,
     purchasedEchoes: {},
     resolvedForks: {},
     takenFutureDebts: {},
     repaidFutureDebts: {},
     showInfinity: false,
+    // NEW: Divine War — battle state for each Old God
+    oldGodBattles: Object.fromEntries(OLD_GODS.map((g) => [g.id, makeInitialBattleState(g.id)])),
+    divineFragments: 0,
 
-    // Layer 10 — Eternity
+    // Layer 10 — Eternity — Ascension
     testamentClauses: 0,
     purchasedTestamentClauses: {},
     activeCanonizations: {},
@@ -289,6 +329,9 @@ function initialMetaState(): Partial<GameState> {
     chosenEnding: null,
     cosmicBoonStacks: 0,
     showEternity: false,
+    // NEW: Universe Creation — 8 slots, each holding an option id or null
+    universeRules: Array(UNIVERSE_SLOTS.length).fill(null),
+    keptGods: [],
 
     currentTab: "actions",
     speed: 1,
@@ -407,20 +450,24 @@ export const useGameStore = create<GameStore>()(
         const hResp = heresyResponseProductionMult(s.activeHeresyResponse);
         const relics = relicBonus(s.equippedRelics || {});
         const cores = logicCoreBonus(s.activeLogicCores || {});
-        // Layer 7 — Omnipotence (hybrids + stance)
-        const hybrids = hybridBonus(s.equippedHybrids || {}, s.activeOmnipotenceStance);
-        // Layer 8 — Divinity (prayer channels + mask + polarity)
+        // Layer 7 — Omnipotence (creatures + legions + stance)
+        const hybrids = legionBonus(s.creatures || [], s.legions || [], s.activeOmnipotenceStance);
+        // Layer 8 — Divinity (alliances with minor gods)
         const chanBonus = prayerChannelBonus(s.prayerChannelLevels || {});
         const maskBonus = divineMaskBonus(s.activeDivineMask);
         const polarityBonus = worshipPolarityBonus(s.activeWorshipPolarity);
-        // Layer 9 — Infinity (echoes + forks + active debt)
+        const allianceB = allianceBonus(s.alliances || {}, s.minorGods || MINOR_GODS);
+        // Layer 9 — Infinity (divine fragments — permanent power boost per Old God defeated)
         const echoB = echoBonus(s.purchasedEchoes || {});
         const forkB = forkBonus(s.resolvedForks || {});
         const debtB = activeDebtBonus(s.takenFutureDebts || {}, s.repaidFutureDebts || {});
-        // Layer 10 — Eternity (testament + canonizations + weaves + cosmic boon)
+        const fragmentB = divineFragmentBonus(s.divineFragments || 0);
+        // Layer 10 — Eternity (universe rules + kept gods + cosmic boon)
         const testB = testamentClauseBonus(s.purchasedTestamentClauses || {});
         const canonB = canonizationBonus(s.activeCanonizations || {});
         const weaveB = permanenceWeaveBonus(s.activePermanenceWeaves || {});
+        const universeB = universeSlotBonus(s.universeRules || Array(UNIVERSE_SLOTS.length).fill(null));
+        const keptB = keptGodsBonus(s.keptGods || []);
         const cosmicBoon = cosmicBoonBonus(s.cosmicBoonStacks || 0);
 
         const layerProdBonus =
@@ -428,22 +475,26 @@ export const useGameStore = create<GameStore>()(
           wProd + dLaw.productionMult + wMode.productionMult + hResp +
           relics.productionMult + cores.productionMult +
           hybrids.productionMult + chanBonus.productionMult + maskBonus.productionMult +
-          polarityBonus.productionMult + echoB.productionMult + forkB.productionMult +
-          debtB.productionMult + testB.productionMult + canonB.productionMult +
-          weaveB.productionMult + cosmicBoon;
+          polarityBonus.productionMult + allianceB.productionMult +
+          echoB.productionMult + forkB.productionMult + debtB.productionMult +
+          fragmentB.productionMult + testB.productionMult + canonB.productionMult +
+          weaveB.productionMult + universeB.productionMult + keptB.productionMult + cosmicBoon;
         const layerCapBonus =
           foresight.capMult + route.capMult + ritualCap + wCap +
           dLaw.capMult + relics.capMult + cores.capMult +
           hybrids.capMult + chanBonus.capMult + maskBonus.capMult +
-          polarityBonus.capMult + echoB.capMult + forkB.capMult +
-          debtB.capMult + testB.capMult + canonB.capMult + weaveB.capMult;
+          polarityBonus.capMult + allianceB.capMult +
+          echoB.capMult + forkB.capMult + debtB.capMult +
+          fragmentB.capMult + testB.capMult + canonB.capMult +
+          weaveB.capMult + universeB.capMult + keptB.capMult;
         const layerPopBonus =
           foresight.popGrowthMult + route.popGrowthMult + ritualPop + wPop +
           dLaw.popGrowthMult + relics.popGrowthMult +
           hybrids.popGrowthMult + chanBonus.popGrowthMult + maskBonus.popGrowthMult +
-          polarityBonus.popGrowthMult + echoB.popGrowthMult + forkB.popGrowthMult +
-          debtB.popGrowthMult + testB.popGrowthMult + canonB.popGrowthMult +
-          weaveB.popGrowthMult;
+          polarityBonus.popGrowthMult + allianceB.popGrowthMult +
+          echoB.popGrowthMult + forkB.popGrowthMult + debtB.popGrowthMult +
+          fragmentB.popGrowthMult + testB.popGrowthMult + canonB.popGrowthMult +
+          weaveB.popGrowthMult + universeB.popGrowthMult + keptB.popGrowthMult;
 
         // QUICK WIN 2 — Active abilities: Surge (×3 prod) + Overclock (×2 layer bonuses)
         const surgeActive = (s.activeAbilityEffects?.surge || 0) > 0;
@@ -1134,11 +1185,11 @@ export const useGameStore = create<GameStore>()(
           }
         }
 
-        // ---- Layer 7 — Omnipotence: instability accrual ----
+        // ---- Layer 7 — Omnipotence (Bio-engineering): genetic instability accrual ----
         let instability = s.instability || 0;
         let peakInstability = s.peakInstability || 0;
         if (unlockedLayers.omnipotence) {
-          const rate = effectiveInstabilityRate(s.equippedHybrids || {}, s.activeOmnipotenceStance);
+          const rate = effectiveInstabilityRate(s.creatures || [], s.legions || [], s.activeOmnipotenceStance);
           if (rate > 0) {
             instability = Math.min(100, instability + rate * realDt);
             peakInstability = Math.max(peakInstability, instability);
@@ -1146,12 +1197,13 @@ export const useGameStore = create<GameStore>()(
               instability = 100;
               peakInstability = 100;
               setTimeout(() => {
-                get().addToLog("Instability has reached 100. The hybrid god tears itself apart — the run ends.");
+                get().addToLog("Genetic instability has reached 100. Your creatures go rogue — the run ends.");
                 get().triggerPrestige();
               }, 0);
             }
           }
         }
+        const geneticInstability = instability; // alias
 
         // ---- Layer 8 — Divinity (layer): Prayer generation ----
         let prayer = s.prayer || 0;
@@ -1197,25 +1249,25 @@ export const useGameStore = create<GameStore>()(
             setTimeout(() => get().addToLog("3 Logic Cores activated. Omnipotence layer unlocked."), 0);
           }
         }
-        // Layer 8 (Divinity): peak instability ≥ 80
+        // Layer 8 (Divinity): 2+ alliances formed
         if (unlockedLayers.omnipotence && !unlockedLayers.divinity) {
           if (isOmnipotenceComplete(peakInstability)) {
             unlockedLayers = { ...unlockedLayers, divinity: true };
-            setTimeout(() => get().addToLog("Peak instability reached 80. Divinity layer unlocked."), 0);
+            setTimeout(() => get().addToLog("Peak instability reached 80. Divine Alliance layer unlocked."), 0);
           }
         }
-        // Layer 9 (Infinity): 3+ prayer channels leveled AND polarity chosen
+        // Layer 9 (Infinity): 2+ alliances formed (Divine Alliance complete)
         if (unlockedLayers.divinity && !unlockedLayers.infinity) {
-          if (isDivinityComplete(s.prayerChannelLevels || {}, s.activeWorshipPolarity)) {
+          if (isDivinityComplete(s.alliances || {})) {
             unlockedLayers = { ...unlockedLayers, infinity: true };
-            setTimeout(() => get().addToLog("Prayer channels and polarity set. Infinity layer unlocked."), 0);
+            setTimeout(() => get().addToLog("Two alliances forged. Divine War layer unlocked."), 0);
           }
         }
-        // Layer 10 (Eternity): forks resolved + debt repaid
+        // Layer 10 (Eternity): all 3 Old Gods defeated
         if (unlockedLayers.infinity && !unlockedLayers.eternity) {
-          if (isInfinityComplete(s.resolvedForks || {}, s.takenFutureDebts || {}, s.repaidFutureDebts || {})) {
+          if (isInfinityComplete(s.oldGodBattles || {})) {
             unlockedLayers = { ...unlockedLayers, eternity: true };
-            setTimeout(() => get().addToLog("All forks resolved and debts repaid. Eternity layer unlocked."), 0);
+            setTimeout(() => get().addToLog("All 3 Old Gods defeated. Ascension layer unlocked."), 0);
           }
         }
 
@@ -1434,8 +1486,12 @@ export const useGameStore = create<GameStore>()(
           bloodPactsUsed,
           // Layer 7-8 state
           instability,
+          geneticInstability,
           peakInstability,
           prayer,
+          // NEW: Layer 7-10 runtime state
+          // (creatures/legions/minorGods/oldGodBattles/universeRules are mutated
+          //  through dedicated actions, not inside the tick — they persist as-is.)
           // QUICK WINS — runtime timers + universal currency
           activeAbilityCooldowns,
           activeAbilityEffects,
@@ -1837,20 +1893,24 @@ export const useGameStore = create<GameStore>()(
         const relicEp = relicBonus(s.equippedRelics || {}).epMult;
         const coreEp = logicCoreBonus(s.activeLogicCores || {}).epMult;
         // Layers 7-10 EP bonus
-        const hybridEp = hybridBonus(s.equippedHybrids || {}, s.activeOmnipotenceStance).epMult;
+        const hybridEp = legionBonus(s.creatures || [], s.legions || [], s.activeOmnipotenceStance).epMult;
         const chanEp = prayerChannelBonus(s.prayerChannelLevels || {}).epMult;
         const maskEp = divineMaskBonus(s.activeDivineMask).epMult;
         const polEp = worshipPolarityBonus(s.activeWorshipPolarity).epMult;
+        const allianceEp = allianceBonus(s.alliances || {}, s.minorGods || MINOR_GODS).epMult;
         const echoEp = echoBonus(s.purchasedEchoes || {}).epMult;
         const forkEp = forkBonus(s.resolvedForks || {}).epMult;
         const debtEp = activeDebtBonus(s.takenFutureDebts || {}, s.repaidFutureDebts || {}).epMult;
+        const fragmentEp = divineFragmentBonus(s.divineFragments || 0).epMult;
         const testEp = testamentClauseBonus(s.purchasedTestamentClauses || {}).epMult;
         const canonEp = canonizationBonus(s.activeCanonizations || {}).epMult;
         const weaveEp = permanenceWeaveBonus(s.activePermanenceWeaves || {}).epMult;
+        const universeEp = universeSlotBonus(s.universeRules || Array(UNIVERSE_SLOTS.length).fill(null)).epMult;
+        const keptEp = keptGodsBonus(s.keptGods || []).epMult;
         const layerEpMult = 1 +
           fs.epMult + rb.epMult + ritualEp + wEp + dl.epMult + relicEp + coreEp +
-          hybridEp + chanEp + maskEp + polEp + echoEp + forkEp + debtEp +
-          testEp + canonEp + weaveEp;
+          hybridEp + chanEp + maskEp + polEp + allianceEp + echoEp + forkEp + debtEp +
+          fragmentEp + testEp + canonEp + weaveEp + universeEp + keptEp;
         epEarned = Math.max(1, Math.floor(epEarned * layerEpMult));
 
         // ---- Layer 2 (Enlightenment): grant Divinity based on score ----
@@ -2009,37 +2069,49 @@ export const useGameStore = create<GameStore>()(
           logicCoreTimers: {}, // reset per-run
           showSingularity: false,
 
-          // Layer 7 — Omnipotence (persist equipped hybrids + stance; reset instability)
+          // Layer 7 — Omnipotence (Bio-engineering) — persist creatures, legions, stance; reset instability
           equippedHybrids: s.equippedHybrids || {},
           activeOmnipotenceStance: s.activeOmnipotenceStance || "balanced",
           instability: 0, // reset per-run
           peakInstability: 0, // reset per-run
+          geneticInstability: 0, // reset per-run
           showOmnipotence: false,
+          creatures: s.creatures || [],
+          legions: s.legions || [],
+          creatureDesignDraft: s.creatureDesignDraft || null,
 
-          // Layer 8 — Divinity (persist channels + mask + polarity; prayer accrues)
-          prayer: (s.prayer || 0), // currency persists (it accrues like divinity)
+          // Layer 8 — Divinity (Divine Alliance) — persist minor gods, relationships, alliances
+          prayer: (s.prayer || 0), // currency persists
           prayerChannelLevels: s.prayerChannelLevels || {},
           activeDivineMask: s.activeDivineMask,
           activeWorshipPolarity: s.activeWorshipPolarity,
           showDivinityLayer: false,
+          minorGods: s.minorGods || MINOR_GODS.map((g) => ({ ...g })),
+          godRelationships: s.godRelationships ||
+            Object.fromEntries(MINOR_GODS.map((g) => [g.id, g.startingRelationship])),
+          alliances: s.alliances || {},
 
-          // Layer 9 — Infinity (persist echoes + purchased echoes; reset forks + debts per-run)
+          // Layer 9 — Infinity (Divine War) — persist divine fragments; reset battles per-run
           echoes: (s.echoes || 0) + echoGain,
           purchasedEchoes: s.purchasedEchoes || {},
-          resolvedForks: {}, // reset per-run
-          takenFutureDebts: {}, // reset per-run
-          repaidFutureDebts: {}, // reset per-run
+          resolvedForks: {},
+          takenFutureDebts: {},
+          repaidFutureDebts: {},
           showInfinity: false,
+          oldGodBattles: Object.fromEntries(OLD_GODS.map((g) => [g.id, makeInitialBattleState(g.id)])),
+          divineFragments: s.divineFragments || 0,
 
-          // Layer 10 — Eternity (persist clauses + canonizations + weaves + cosmic boon; reset ending)
+          // Layer 10 — Eternity (Ascension) — persist universe rules + kept gods; reset ending
           testamentClauses: (s.testamentClauses || 0) + testamentGain,
           purchasedTestamentClauses: s.purchasedTestamentClauses || {},
           activeCanonizations: s.activeCanonizations || {},
           activePermanenceWeaves: s.activePermanenceWeaves || {},
-          chosenEnding: null, // reset per-run (player can choose again)
+          chosenEnding: null,
           cosmicBoonStacks: (s.cosmicBoonStacks || 0) +
-            (s.chosenEnding === "reset" ? 1 : 0), // stack on each Reset Universe ending
+            (s.chosenEnding === "reset" ? 1 : 0),
           showEternity: false,
+          universeRules: s.universeRules || Array(UNIVERSE_SLOTS.length).fill(null),
+          keptGods: s.keptGods || [],
 
           // ===== QUICK WINS — prestige reset rules =====
           // prestigePoints is a universal currency — persists across prestiges
@@ -2792,20 +2864,10 @@ export const useGameStore = create<GameStore>()(
         get().addToLog("Dimension Engine initialized — three parallel timelines.");
       },
 
-      // ============ LAYER 7 — OMNIPOTENCE ============
+      // ============ LAYER 7 — OMNIPOTENCE (Bio-engineering) ============
       toggleHybridLineage: (hybridId) => {
-        const s = get();
-        if (!s.unlockedLayers?.omnipotence) return;
-        const hybrid = HYBRID_LINEAGE_MAP[hybridId];
-        if (!hybrid) return;
-        const equippedHybrids = { ...(s.equippedHybrids || {}) };
-        if (equippedHybrids[hybridId]) {
-          delete equippedHybrids[hybridId];
-        } else {
-          equippedHybrids[hybridId] = true;
-        }
-        set({ equippedHybrids });
-        get().addToLog(`${hybrid.name} ${equippedHybrids[hybridId] ? "equipped" : "unequipped"}.`);
+        // LEGACY stub — kept for migration. The new Creature Lab doesn't use hybrids.
+        void hybridId;
       },
 
       setOmnipotenceStance: (stanceId) => {
@@ -2817,158 +2879,314 @@ export const useGameStore = create<GameStore>()(
         get().addToLog(`Stance: ${stance.name}.`);
       },
 
-      // ============ LAYER 8 — DIVINITY (LAYER) ============
-      levelPrayerChannel: (channelId) => {
-        const s = get();
-        if (!s.unlockedLayers?.divinity) return;
-        const channel = PRAYER_CHANNEL_MAP[channelId];
-        if (!channel) return;
-        const curLevel = s.prayerChannelLevels?.[channelId] || 0;
-        if (curLevel >= channel.maxLevel) return;
-        const cost = prayerChannelCost(channel, curLevel);
-        if ((s.prayer || 0) < cost) return;
-        set({
-          prayer: (s.prayer || 0) - cost,
-          prayerChannelLevels: {
-            ...(s.prayerChannelLevels || {}),
-            [channelId]: curLevel + 1,
-          },
-        });
-        get().addToLog(`Prayer Channel leveled: ${channel.name} → ${curLevel + 1}.`);
+      setCreatureDesignDraft: (draft) => {
+        set({ creatureDesignDraft: draft });
       },
 
-      setDivineMask: (maskId) => {
+      createCreature: () => {
         const s = get();
-        if (!s.unlockedLayers?.divinity) return;
-        if (maskId !== null && !DIVINE_MASK_MAP[maskId]) return;
-        set({ activeDivineMask: maskId });
-        const m = maskId ? DIVINE_MASK_MAP[maskId] : null;
-        get().addToLog(m ? `Divine Mask: ${m.name}.` : "Divine Mask cleared.");
+        if (!s.unlockedLayers?.omnipotence) return;
+        const draft = s.creatureDesignDraft;
+        if (!draft) return;
+        if (!draft.bodyType || !draft.diet || !draft.special) return;
+        const bodyType = draft.bodyType as CreatureBodyTypeId;
+        const diet = draft.diet as CreatureDietId;
+        const special = draft.special as CreatureSpecialId;
+        const stats = computeCreatureStats(bodyType, diet, special);
+        const id = `creature_${Date.now()}_${Math.floor(Math.random() * 1000)}`;
+        const body = CREATURE_BODY_TYPE_MAP[bodyType];
+        const name = (draft.name && draft.name.trim()) || `New ${body.name}`;
+        const creature: Creature = {
+          id,
+          name,
+          bodyType,
+          diet,
+          special,
+          ...stats,
+          createdAt: s.time || 0,
+        };
+        set({ creatures: [...(s.creatures || []), creature] });
+        get().addToLog(`Creature created: ${creature.name} (${body.name}) — ATK ${creature.attack} / DEF ${creature.defense} / SPD ${creature.speed}.`);
       },
 
-      setWorshipPolarity: (polarityId) => {
+      addCreatureToLegion: (creatureId, legionId) => {
         const s = get();
-        if (!s.unlockedLayers?.divinity) return;
-        if (polarityId !== null && !WORSHIP_POLARITY_MAP[polarityId]) return;
-        set({ activeWorshipPolarity: polarityId });
-        const p = polarityId ? WORSHIP_POLARITY_MAP[polarityId] : null;
-        get().addToLog(p ? `Worship Polarity: ${p.name}.` : "Worship Polarity cleared.");
-      },
-
-      // ============ LAYER 9 — INFINITY ============
-      purchaseEcho: (echoId) => {
-        const s = get();
-        if (!s.unlockedLayers?.infinity) return;
-        const echo = ECHO_TYPE_MAP[echoId];
-        if (!echo) return;
-        if (s.purchasedEchoes?.[echoId]) return;
-        if ((s.echoes || 0) < echo.cost) return;
-        set({
-          echoes: (s.echoes || 0) - echo.cost,
-          purchasedEchoes: { ...(s.purchasedEchoes || {}), [echoId]: true },
-        });
-        get().addToLog(`Echo purchased: ${echo.name} (-${echo.cost} Echoes).`);
-      },
-
-      resolveFork: (forkId, branchId) => {
-        const s = get();
-        if (!s.unlockedLayers?.infinity) return;
-        const fork = FORK_SCENARIO_MAP[forkId];
-        if (!fork) return;
-        if (s.resolvedForks?.[forkId]) return; // already resolved
-        const branch = fork.branches.find((b) => b.id === branchId);
-        if (!branch) return;
-        set({
-          resolvedForks: { ...(s.resolvedForks || {}), [forkId]: branchId },
-        });
-        get().addToLog(`Fork resolved: ${fork.name} → ${branch.label}.`);
-      },
-
-      takeFutureDebt: (debtId) => {
-        const s = get();
-        if (!s.unlockedLayers?.infinity) return;
-        const debt = FUTURE_DEBT_TIER_MAP[debtId];
-        if (!debt) return;
-        if (s.takenFutureDebts?.[debtId]) return;
-        set({
-          takenFutureDebts: { ...(s.takenFutureDebts || {}), [debtId]: true },
-        });
-        get().addToLog(`Future Debt taken: ${debt.name}. Repay ${debt.repaymentCost} Echoes later.`);
-      },
-
-      repayFutureDebt: (debtId) => {
-        const s = get();
-        if (!s.unlockedLayers?.infinity) return;
-        const debt = FUTURE_DEBT_TIER_MAP[debtId];
-        if (!debt) return;
-        if (!s.takenFutureDebts?.[debtId]) return;
-        if (s.repaidFutureDebts?.[debtId]) return;
-        if ((s.echoes || 0) < debt.repaymentCost) return;
-        set({
-          echoes: (s.echoes || 0) - debt.repaymentCost,
-          repaidFutureDebts: { ...(s.repaidFutureDebts || {}), [debtId]: true },
-        });
-        get().addToLog(`Future Debt repaid: ${debt.name} (-${debt.repaymentCost} Echoes).`);
-      },
-
-      // ============ LAYER 10 — ETERNITY ============
-      purchaseTestamentClause: (clauseId) => {
-        const s = get();
-        if (!s.unlockedLayers?.eternity) return;
-        const clause = TESTAMENT_CLAUSE_MAP[clauseId];
-        if (!clause) return;
-        if (s.purchasedTestamentClauses?.[clauseId]) return;
-        if ((s.testamentClauses || 0) < clause.cost) return;
-        set({
-          testamentClauses: (s.testamentClauses || 0) - clause.cost,
-          purchasedTestamentClauses: { ...(s.purchasedTestamentClauses || {}), [clauseId]: true },
-        });
-        get().addToLog(`Testament Clause enacted: ${clause.name} (-${clause.cost} Clauses).`);
-      },
-
-      toggleCanonization: (canonId) => {
-        const s = get();
-        if (!s.unlockedLayers?.eternity) return;
-        const canon = CANONIZATION_MAP[canonId];
-        if (!canon) return;
-        const activeCanonizations = { ...(s.activeCanonizations || {}) };
-        if (activeCanonizations[canonId]) {
-          delete activeCanonizations[canonId];
-        } else {
-          // Canonization requires payment only on first activation
-          if ((s.testamentClauses || 0) < canon.cost) return;
-          activeCanonizations[canonId] = true;
-          set({
-            testamentClauses: (s.testamentClauses || 0) - canon.cost,
-            activeCanonizations,
-          });
-          get().addToLog(`Canonization enacted: ${canon.name} (-${canon.cost} Clauses).`);
+        if (!s.unlockedLayers?.omnipotence) return;
+        const legions = (s.legions || []).map((l) => ({ ...l, creatureIds: [...l.creatureIds] }));
+        const legion = legions.find((l) => l.id === legionId);
+        if (!legion) return;
+        if (legion.creatureIds.length >= LEGION_MAX_CREATURES) {
+          get().addToLog(`Legion ${legion.name} is full (max ${LEGION_MAX_CREATURES} creatures).`);
           return;
         }
-        set({ activeCanonizations });
-        get().addToLog(`Canonization removed: ${canon.name}.`);
+        // Remove from any other legion first
+        for (const l of legions) {
+          l.creatureIds = l.creatureIds.filter((id) => id !== creatureId);
+        }
+        const target = legions.find((l) => l.id === legionId)!;
+        target.creatureIds.push(creatureId);
+        set({ legions });
       },
 
-      togglePermanenceWeave: (weaveId) => {
+      removeCreatureFromLegion: (creatureId, legionId) => {
         const s = get();
-        if (!s.unlockedLayers?.eternity) return;
-        const weave = PERMANENCE_WEAVE_MAP[weaveId];
-        if (!weave) return;
-        const activePermanenceWeaves = { ...(s.activePermanenceWeaves || {}) };
-        if (activePermanenceWeaves[weaveId]) {
-          delete activePermanenceWeaves[weaveId];
-        } else {
-          if ((s.testamentClauses || 0) < weave.cost) return;
-          activePermanenceWeaves[weaveId] = true;
-          set({
-            testamentClauses: (s.testamentClauses || 0) - weave.cost,
-            activePermanenceWeaves,
-          });
-          get().addToLog(`Permanence Weave enacted: ${weave.name} (-${weave.cost} Clauses).`);
+        if (!s.unlockedLayers?.omnipotence) return;
+        const legions = (s.legions || []).map((l) => ({ ...l, creatureIds: [...l.creatureIds] }));
+        const legion = legions.find((l) => l.id === legionId);
+        if (!legion) return;
+        legion.creatureIds = legion.creatureIds.filter((id) => id !== creatureId);
+        set({ legions });
+      },
+
+      createLegion: (name) => {
+        const s = get();
+        if (!s.unlockedLayers?.omnipotence) return;
+        const id = `legion_${Date.now()}_${Math.floor(Math.random() * 1000)}`;
+        const legion: Legion = {
+          id,
+          name: name || `Legion ${(s.legions || []).length + 1}`,
+          creatureIds: [],
+          deployed: false,
+        };
+        set({ legions: [...(s.legions || []), legion] });
+        get().addToLog(`Legion formed: ${legion.name}.`);
+      },
+
+      deleteLegion: (legionId) => {
+        const s = get();
+        if (!s.unlockedLayers?.omnipotence) return;
+        set({ legions: (s.legions || []).filter((l) => l.id !== legionId) });
+      },
+
+      // ============ LAYER 8 — DIVINITY (Divine Alliance) ============
+      levelPrayerChannel: (_channelId) => {
+        // LEGACY stub — kept for migration. The new Divine Alliance doesn't use channels.
+        void _channelId;
+      },
+
+      setDivineMask: (_maskId) => {
+        // LEGACY stub — kept for migration. The new Divine Alliance doesn't use masks.
+        void _maskId;
+      },
+
+      setWorshipPolarity: (_polarityId) => {
+        // LEGACY stub — kept for migration.
+        void _polarityId;
+      },
+
+      negotiateWithGod: (godId) => {
+        const s = get();
+        if (!s.unlockedLayers?.divinity) return;
+        const god = MINOR_GOD_MAP[godId];
+        if (!god) return;
+        const relationships = { ...(s.godRelationships || {}) };
+        const cur = relationships[godId] || god.startingRelationship;
+        if (cur >= RELATIONSHIP_MAX) {
+          get().addToLog(`${god.name}'s relationship is already maxed.`);
           return;
         }
-        set({ activePermanenceWeaves });
-        get().addToLog(`Permanence Weave removed: ${weave.name}.`);
+        relationships[godId] = Math.min(RELATIONSHIP_MAX, cur + RELATIONSHIP_NEGOTIATE_GAIN);
+        set({ godRelationships: relationships });
+        get().addToLog(`Negotiated with ${god.name}: +${RELATIONSHIP_NEGOTIATE_GAIN} relationship (now ${relationships[godId]}/100).`);
+      },
+
+      tradeWithGod: (godId) => {
+        const s = get();
+        if (!s.unlockedLayers?.divinity) return;
+        const god = MINOR_GOD_MAP[godId];
+        if (!god) return;
+        // Pay demand → receive reward
+        const demandResource = god.demand.resource as "divinity" | "prayer" | "faith";
+        const demandAmount = god.demand.amount;
+        const have = (s as any)[demandResource] || 0;
+        if (have < demandAmount) {
+          get().addToLog(`Not enough ${demandResource} to trade with ${god.name} (need ${demandAmount}).`);
+          return;
+        }
+        const rewardResource = god.reward.resource as "divinity" | "prayer" | "faith";
+        const rewardAmount = god.reward.amount;
+        const relationships = { ...(s.godRelationships || {}) };
+        const cur = relationships[godId] || god.startingRelationship;
+        relationships[godId] = Math.min(RELATIONSHIP_MAX, cur + RELATIONSHIP_TRADE_GAIN);
+        const update: any = { godRelationships: relationships };
+        update[demandResource] = have - demandAmount;
+        update[rewardResource] = ((s as any)[rewardResource] || 0) + rewardAmount;
+        set(update);
+        get().addToLog(`Traded with ${god.name}: -${demandAmount} ${demandResource}, +${rewardAmount} ${rewardResource}, +${RELATIONSHIP_TRADE_GAIN} relationship.`);
+      },
+
+      formAlliance: (godId) => {
+        const s = get();
+        if (!s.unlockedLayers?.divinity) return;
+        const god = MINOR_GOD_MAP[godId];
+        if (!god) return;
+        const alliances = { ...(s.alliances || {}) };
+        if (alliances[godId]) {
+          get().addToLog(`Already allied with ${god.name}.`);
+          return;
+        }
+        const relationships = s.godRelationships || {};
+        if (!canFormAlliance(relationships, alliances, godId)) {
+          get().addToLog(`${god.name} requires relationship ≥ ${RELATIONSHIP_ALLIANCE_THRESHOLD} to form an alliance (current: ${relationships[godId] || 0}).`);
+          return;
+        }
+        alliances[godId] = true;
+        set({ alliances });
+        get().addToLog(`Alliance formed with ${god.name} (${god.title}). Passive bonuses granted.`);
+      },
+
+      // ============ LAYER 9 — INFINITY (Divine War) ============
+      purchaseEcho: (_echoId) => {
+        // LEGACY stub — kept for migration. The new Divine War doesn't use echoes.
+        void _echoId;
+      },
+
+      resolveFork: (_forkId, _branchId) => {
+        // LEGACY stub — kept for migration.
+        void _forkId;
+        void _branchId;
+      },
+
+      takeFutureDebt: (_debtId) => {
+        // LEGACY stub — kept for migration.
+        void _debtId;
+      },
+
+      repayFutureDebt: (_debtId) => {
+        // LEGACY stub — kept for migration.
+        void _debtId;
+      },
+
+      startOldGodBattle: (oldGodId) => {
+        const s = get();
+        if (!s.unlockedLayers?.infinity) return;
+        const god = OLD_GOD_MAP[oldGodId];
+        if (!god) return;
+        const battles = { ...(s.oldGodBattles || {}) };
+        const cur = battles[oldGodId];
+        if (cur && cur.status === "won") {
+          get().addToLog(`${god.name} has already been defeated.`);
+          return;
+        }
+        if (cur && cur.status === "in_progress") {
+          get().addToLog(`Battle with ${god.name} is already in progress.`);
+          return;
+        }
+        battles[oldGodId] = makeInitialBattleState(oldGodId);
+        battles[oldGodId].status = "in_progress";
+        set({ oldGodBattles: battles });
+        get().addToLog(`Battle begun with ${god.name} (${god.title}). HP ${god.hp}, weakness: ${god.weakness}.`);
+      },
+
+      deployLegionToBattle: (oldGodId, legionId) => {
+        const s = get();
+        if (!s.unlockedLayers?.infinity) return;
+        const battles = { ...(s.oldGodBattles || {}) };
+        const battle = battles[oldGodId];
+        if (!battle || battle.status !== "in_progress") return;
+        const legion = (s.legions || []).find((l) => l.id === legionId);
+        if (!legion) return;
+        if (battle.deployedLegionIds.includes(legionId)) {
+          battle.deployedLegionIds = battle.deployedLegionIds.filter((id) => id !== legionId);
+          set({ oldGodBattles: battles });
+          get().addToLog(`Legion ${legion.name} recalled from ${OLD_GOD_MAP[oldGodId].name}.`);
+          return;
+        }
+        battle.deployedLegionIds = [...battle.deployedLegionIds, legionId];
+        set({ oldGodBattles: battles });
+        get().addToLog(`Legion ${legion.name} deployed against ${OLD_GOD_MAP[oldGodId].name}.`);
+      },
+
+      callAllyToBattle: (oldGodId, godId) => {
+        const s = get();
+        if (!s.unlockedLayers?.infinity) return;
+        if (!s.alliances?.[godId]) {
+          get().addToLog(`${MINOR_GOD_MAP[godId]?.name || "That god"} is not an ally.`);
+          return;
+        }
+        const battles = { ...(s.oldGodBattles || {}) };
+        const battle = battles[oldGodId];
+        if (!battle || battle.status !== "in_progress") return;
+        if (battle.calledAllyIds.includes(godId)) {
+          battle.calledAllyIds = battle.calledAllyIds.filter((id) => id !== godId);
+          set({ oldGodBattles: battles });
+          get().addToLog(`Ally ${MINOR_GOD_MAP[godId].name} withdrawn from ${OLD_GOD_MAP[oldGodId].name}.`);
+          return;
+        }
+        battle.calledAllyIds = [...battle.calledAllyIds, godId];
+        set({ oldGodBattles: battles });
+        get().addToLog(`Ally ${MINOR_GOD_MAP[godId].name} called to fight ${OLD_GOD_MAP[oldGodId].name}.`);
+      },
+
+      attackOldGod: (oldGodId) => {
+        const s = get();
+        if (!s.unlockedLayers?.infinity) return;
+        const god = OLD_GOD_MAP[oldGodId];
+        if (!god) return;
+        const battles = { ...(s.oldGodBattles || {}) };
+        const battle = battles[oldGodId];
+        if (!battle || battle.status !== "in_progress") return;
+        // Compute player attack from deployed legions
+        const deployedPowers = battle.deployedLegionIds.map((lid) => {
+          const legion = (s.legions || []).find((l) => l.id === lid);
+          if (!legion) return { attack: 0, defense: 0, speed: 0, count: 0 };
+          return legionPower(legion, s.creatures || []);
+        });
+        const calledAllies = battle.calledAllyIds.map((aid) => {
+          const ally = MINOR_GOD_MAP[aid];
+          if (!ally) return { powerLevel: 0 };
+          return { powerLevel: ally.powerLevel };
+        });
+        const weakToBodyType = god.weakness === "predator" || god.weakness === "flyer" || god.weakness === "burrower";
+        const playerDmg = computePlayerAttack(deployedPowers, calledAllies, weakToBodyType);
+        // Compute boss attack back
+        const totalDefense = deployedPowers.reduce((a, p) => a + p.defense, 0);
+        const bossDmg = computeBossAttack(god.attack, totalDefense);
+        // Apply damage
+        const bossHp = Math.max(0, battle.bossHp - playerDmg);
+        const log = [...(battle.log || [])];
+        log.push(`Turn ${battle.turn + 1}: You deal ${playerDmg} damage. ${god.name} retaliates for ${bossDmg}.`);
+        if (log.length > 6) log.shift();
+        let status: import("../data/infinity").BattleStatus = battle.status;
+        let phase = battle.phase;
+        if (bossHp <= 0) {
+          status = "won";
+          log.push(`${god.name} has fallen! +1 Divine Fragment.`);
+        } else {
+          phase = phaseForHp(god, bossHp);
+        }
+        battles[oldGodId] = {
+          ...battle,
+          bossHp,
+          phase,
+          status,
+          turn: battle.turn + 1,
+          log,
+        };
+        set({ oldGodBattles: battles });
+        if (status === "won") {
+          const fragments = (s.divineFragments || 0) + 1;
+          set({ divineFragments: fragments });
+          get().addToLog(`Victory over ${god.name}! Earned a Divine Fragment (total: ${fragments}).`);
+        } else {
+          get().addToLog(`Strike ${god.name} for ${playerDmg} (HP ${bossHp}/${battle.bossMaxHp}). Boss hits back for ${bossDmg}.`);
+        }
+      },
+
+      // ============ LAYER 10 — ETERNITY (Ascension) ============
+      purchaseTestamentClause: (_clauseId) => {
+        // LEGACY stub — kept for migration. The new Ascension uses Universe Creation.
+        void _clauseId;
+      },
+
+      toggleCanonization: (_canonId) => {
+        // LEGACY stub — kept for migration.
+        void _canonId;
+      },
+
+      togglePermanenceWeave: (_weaveId) => {
+        // LEGACY stub — kept for migration.
+        void _weaveId;
       },
 
       chooseEnding: (endingId) => {
@@ -2976,15 +3194,55 @@ export const useGameStore = create<GameStore>()(
         if (!s.unlockedLayers?.eternity) return;
         const ending = ENDING_CHOICE_MAP[endingId];
         if (!ending) return;
+        // Reset ending requires all 8 universe slots filled
+        if (endingId === "reset") {
+          const { filledCount } = universeSlotBonus(s.universeRules || Array(UNIVERSE_SLOTS.length).fill(null));
+          if (filledCount < UNIVERSE_SLOTS.length) {
+            get().addToLog(`Cannot Reset Universe: ${filledCount}/${UNIVERSE_SLOTS.length} universe slots filled. Fill all 8 to ascend.`);
+            return;
+          }
+        }
         set({ chosenEnding: endingId });
         get().addToLog(`Ending chosen: ${ending.name}. ${ending.desc}`);
         if (endingId === "reset") {
-          // Trigger an immediate prestige to begin the fresh universe.
           setTimeout(() => {
-            get().addToLog("The universe is reset. A new cosmos stirs.");
+            get().addToLog("The universe is reset. A new cosmos stirs, governed by your rules.");
             get().triggerPrestige();
           }, 0);
         }
+      },
+
+      setUniverseRule: (slotIndex, optionId) => {
+        const s = get();
+        if (!s.unlockedLayers?.eternity) return;
+        if (slotIndex < 0 || slotIndex >= UNIVERSE_SLOTS.length) return;
+        const slot = UNIVERSE_SLOTS[slotIndex];
+        if (!slot.options.find((o) => o.id === optionId)) return;
+        const rules = (s.universeRules || Array(UNIVERSE_SLOTS.length).fill(null)).slice();
+        rules[slotIndex] = optionId;
+        set({ universeRules: rules });
+        get().addToLog(`Universe rule set: ${slot.name} → ${slot.options.find((o) => o.id === optionId)?.label}.`);
+      },
+
+      toggleKeptGod: (godId) => {
+        const s = get();
+        if (!s.unlockedLayers?.eternity) return;
+        if (!MINOR_GOD_MAP[godId]) return;
+        // Only allied gods can be kept in the new pantheon
+        if (!s.alliances?.[godId]) {
+          get().addToLog(`${MINOR_GOD_MAP[godId].name} is not an ally — cannot keep.`);
+          return;
+        }
+        const kept = [...(s.keptGods || [])];
+        const idx = kept.indexOf(godId);
+        if (idx >= 0) {
+          kept.splice(idx, 1);
+          get().addToLog(`${MINOR_GOD_MAP[godId].name} removed from your pantheon.`);
+        } else {
+          kept.push(godId);
+          get().addToLog(`${MINOR_GOD_MAP[godId].name} will be kept in your new pantheon.`);
+        }
+        set({ keptGods: kept });
       },
 
       // ============ THEME CUSTOMIZATION (Part 1) ============
@@ -3249,15 +3507,6 @@ export const useGameStore = create<GameStore>()(
         set({
           unlockedChallenges: true,
           galacticWins: Math.max(s.galacticWins, 1),
-          enlightenmentUnlocked: true,
-          transcendenceUnlocked: true,
-          genesisUnlocked: true,
-          apotheosisUnlocked: true,
-          singularityUnlocked: true,
-          omnipotenceUnlocked: true,
-          divinityUnlocked: true,
-          infinityUnlocked: true,
-          eternityUnlocked: true,
           unlockedLayers: {
             evolution: true,
             enlightenment: true,
@@ -3272,8 +3521,10 @@ export const useGameStore = create<GameStore>()(
           },
           evolutionPoints: (s.evolutionPoints || 0) + 1000,
           divinity: (s.divinity || 0) + 500,
+          prayer: (s.prayer || 0) + 200,
+          faith: (s.faith || 0) + 200,
         });
-        get().addToLog("DEBUG: All prestige layers unlocked. +1000 EP, +500 Divinity granted.");
+        get().addToLog("DEBUG: All prestige layers unlocked. +1000 EP, +500 Divinity, +200 Prayer, +200 Faith granted.");
       },
 
       saveGame: () => {
@@ -3311,7 +3562,7 @@ export const useGameStore = create<GameStore>()(
         }
         return window.localStorage;
       }),
-      version: 8,
+      version: 9,
       partialize: (s) => s,
       // Migrate old saves (v1, v2, v3) to new structure
       migrate: (persisted: any, version: number) => {
@@ -3482,6 +3733,33 @@ export const useGameStore = create<GameStore>()(
           { id: 2, name: "Gamma", speed: 0.25, pop: 8, stageIndex: 0, resources: 0, reachedGalactic: false },
         ];
         if (persisted.dimensionRiftTimer === undefined) persisted.dimensionRiftTimer = 60;
+
+        // v9 migration: REBUILD L7-10 — new narrative (Bio-engineering, Divine Alliance, Divine War, Ascension)
+        // Layer 7 — Creature Lab
+        if (!persisted.creatures) persisted.creatures = [];
+        if (!persisted.legions) persisted.legions = [];
+        if (persisted.geneticInstability === undefined) persisted.geneticInstability = 0;
+        if (persisted.creatureDesignDraft === undefined) {
+          persisted.creatureDesignDraft = { bodyType: "predator", diet: "herbivore", special: "regen", name: "" };
+        }
+        // Layer 8 — Divine Alliance
+        if (!persisted.minorGods) {
+          persisted.minorGods = MINOR_GODS.map((g) => ({ ...g }));
+        }
+        if (!persisted.godRelationships) {
+          persisted.godRelationships = Object.fromEntries(MINOR_GODS.map((g) => [g.id, g.startingRelationship]));
+        }
+        if (!persisted.alliances) persisted.alliances = {};
+        // Layer 9 — Divine War
+        if (!persisted.oldGodBattles) {
+          persisted.oldGodBattles = Object.fromEntries(OLD_GODS.map((g) => [g.id, makeInitialBattleState(g.id)]));
+        }
+        if (persisted.divineFragments === undefined) persisted.divineFragments = 0;
+        // Layer 10 — Universe Creation
+        if (!persisted.universeRules) {
+          persisted.universeRules = Array(UNIVERSE_SLOTS.length).fill(null);
+        }
+        if (!persisted.keptGods) persisted.keptGods = [];
 
         return persisted;
       },

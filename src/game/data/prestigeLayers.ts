@@ -132,27 +132,30 @@ export const PRESTIGE_LAYERS: PrestigeLayer[] = [
   },
   {
     id: "omega",
-    name: "Omega",
+    name: "Bio-Engineering",
     order: 9,
-    icon: "Ω",
-    tagline: "The last letter",
+    icon: "🧬",
+    tagline: "Create life to fight the Old Gods",
     story:
-      "Omega is the end of the alphabet and the start of the unwritten. " +
-      "Here the player becomes the author — and the game, finally, becomes theirs.",
+      "Beyond your dimension, the Old Gods stir. You cannot defeat them with the life you have guided — " +
+      "you must CREATE life. Design creatures with specific traits, combine them into Legions, and prepare " +
+      "for the confrontation to come. Genetic instability is the price of creation.",
     unlockCondition: { type: "galacticWins", value: 100 },
-    currencyName: "Omega Points",
+    currencyName: "Creatures",
   },
   {
     id: "eternity",
-    name: "Eternity",
+    name: "Ascension",
     order: 10,
     icon: "🌠",
-    tagline: "And the play begins again",
+    tagline: "Forge a new universe of your own rules",
     story:
-      "The final layer is not an ending but a recurrence. Eternity is the moment the player " +
-      "looks back at the very first cell — and recognizes themselves, stirring, in the dark.",
+      "After the Old Gods fall, the player god becomes one. Choose which minor gods to keep as allies " +
+      "and which to absorb. Then, with the survivors at your side, define the rules of a new universe — " +
+      "physics, biology, magic, time, space, consciousness, death, rebirth — and decide whether to " +
+      "preserve this cosmos or reset and begin again with a Cosmic Boon.",
     unlockCondition: { type: "galacticWins", value: 250 },
-    currencyName: "Eternal Sparks",
+    currencyName: "Cosmic Boons",
   },
 ];
 

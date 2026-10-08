@@ -10,10 +10,10 @@ import { CHALLENGES, getMaxRepeats } from "@/game/data/challenges";
 import { FORESIGHT_NODES, countForesightNodes, FORESIGHT_NODES_REQUIRED_FOR_LAYER_3 } from "@/game/data/foresight";
 import { BLOOD_PACTS } from "@/game/data/transcendence";
 import { DIVINE_LAWS } from "@/game/data/apotheosis";
-import { HYBRID_LINEAGES } from "@/game/data/omnipotence";
-import { PRAYER_CHANNELS } from "@/game/data/divinity_layer";
-import { ECHO_TYPES, FORK_SCENARIOS, FUTURE_DEBT_TIERS } from "@/game/data/infinity";
-import { TESTAMENT_CLAUSES, CANONIZATIONS, PERMANENCE_WEAVES } from "@/game/data/eternity";
+import { CREATURE_BODY_TYPES, LEGION_MAX_CREATURES } from "@/game/data/omnipotence";
+import { MINOR_GODS, RELATIONSHIP_ALLIANCE_THRESHOLD } from "@/game/data/divinity_layer";
+import { OLD_GODS, ECHO_TYPES, FORK_SCENARIOS, FUTURE_DEBT_TIERS } from "@/game/data/infinity";
+import { UNIVERSE_SLOTS, ENDING_CHOICES, TESTAMENT_CLAUSES, CANONIZATIONS, PERMANENCE_WEAVES } from "@/game/data/eternity";
 import { ACTIVE_ABILITIES } from "@/game/data/activeAbilities";
 import { formatNumber } from "../shared/format";
 
@@ -50,32 +50,31 @@ export function PrestigeTab() {
   const activeLogicCores = useGameStore((s) => s.activeLogicCores || {});
   const setShowSingularity = useGameStore((s) => s.setShowSingularity);
 
-  // Layer 7-10 state
-  const equippedHybrids = useGameStore((s) => s.equippedHybrids || {});
+  // Layer 7-10 state (new narrative)
+  const creatures = useGameStore((s) => s.creatures || []);
+  const legions = useGameStore((s) => s.legions || []);
   const instability = useGameStore((s) => s.instability || 0);
   const peakInstability = useGameStore((s) => s.peakInstability || 0);
   const setShowOmnipotence = useGameStore((s) => s.setShowOmnipotence);
 
   const prayer = useGameStore((s) => s.prayer);
-  const prayerChannelLevels = useGameStore((s) => s.prayerChannelLevels || {});
-  const activeDivineMask = useGameStore((s) => s.activeDivineMask);
-  const activeWorshipPolarity = useGameStore((s) => s.activeWorshipPolarity);
+  const godRelationships = useGameStore((s) => s.godRelationships || {});
+  const alliances = useGameStore((s) => s.alliances || {});
   const setShowDivinityLayer = useGameStore((s) => s.setShowDivinityLayer);
 
-  const echoes = useGameStore((s) => s.echoes);
-  const purchasedEchoes = useGameStore((s) => s.purchasedEchoes || {});
-  const resolvedForks = useGameStore((s) => s.resolvedForks || {});
-  const takenFutureDebts = useGameStore((s) => s.takenFutureDebts || {});
-  const repaidFutureDebts = useGameStore((s) => s.repaidFutureDebts || {});
+  const divineFragments = useGameStore((s) => s.divineFragments || 0);
+  const oldGodBattles = useGameStore((s) => s.oldGodBattles || {});
   const setShowInfinity = useGameStore((s) => s.setShowInfinity);
 
-  const testamentClauses = useGameStore((s) => s.testamentClauses);
-  const purchasedTestamentClauses = useGameStore((s) => s.purchasedTestamentClauses || {});
-  const activeCanonizations = useGameStore((s) => s.activeCanonizations || {});
-  const activePermanenceWeaves = useGameStore((s) => s.activePermanenceWeaves || {});
+  const universeRules = useGameStore((s) => s.universeRules || Array(UNIVERSE_SLOTS.length).fill(null));
+  const keptGods = useGameStore((s) => s.keptGods || []);
   const chosenEnding = useGameStore((s) => s.chosenEnding);
   const cosmicBoonStacks = useGameStore((s) => s.cosmicBoonStacks || 0);
   const setShowEternity = useGameStore((s) => s.setShowEternity);
+
+  // Legacy state (kept for migration; unused by new logic)
+  const echoes = useGameStore((s) => s.echoes);
+  const testamentClauses = useGameStore((s) => s.testamentClauses);
 
   // QUICK WIN 2 — Active abilities state
   const activeAbilityCooldowns = useGameStore((s) => s.activeAbilityCooldowns || {});
@@ -93,16 +92,25 @@ export function PrestigeTab() {
   const lawsEnactedCount = DIVINE_LAWS.filter((l) => enactedDivineLaws[l.id]).length;
   const relicsCount = Object.values(equippedRelics).filter(Boolean).length;
   const coresCount = Object.values(activeLogicCores).filter(Boolean).length;
-  const hybridsCount = Object.values(equippedHybrids).filter(Boolean).length;
-  const channelsLeveled = PRAYER_CHANNELS.filter((c) => (prayerChannelLevels[c.id] || 0) > 0).length;
-  const totalChannelLevels = Object.values(prayerChannelLevels).reduce((a: number, b: any) => a + (b || 0), 0);
-  const purchasedEchoCount = ECHO_TYPES.filter((e) => purchasedEchoes[e.id]).length;
-  const resolvedForkCount = Object.keys(resolvedForks).length;
-  const debtTakenCount = Object.values(takenFutureDebts).filter(Boolean).length;
-  const debtRepaidCount = Object.values(repaidFutureDebts).filter(Boolean).length;
-  const purchasedClauseCount = TESTAMENT_CLAUSES.filter((c) => purchasedTestamentClauses[c.id]).length;
-  const canonCount = Object.values(activeCanonizations).filter(Boolean).length;
-  const weaveCount = Object.values(activePermanenceWeaves).filter(Boolean).length;
+  // NEW: Layer 7-10 derived counts
+  const creaturesCount = creatures.length;
+  const legionsCount = legions.length;
+  const alliedCount = Object.values(alliances).filter(Boolean).length;
+  const godsAtThreshold = MINOR_GODS.filter((g) => (godRelationships[g.id] || 0) >= RELATIONSHIP_ALLIANCE_THRESHOLD).length;
+  const oldGodsDefeated = OLD_GODS.filter((g) => oldGodBattles[g.id]?.status === "won").length;
+  const universeSlotsFilled = universeRules.filter((r) => r !== null).length;
+  const keptGodsCount = keptGods.length;
+  // Legacy counts (kept for backwards compat — all 0 in new logic)
+  const hybridsCount = 0;
+  const channelsLeveled = 0;
+  const totalChannelLevels = 0;
+  const purchasedEchoCount = 0;
+  const resolvedForkCount = 0;
+  const debtTakenCount = 0;
+  const debtRepaidCount = 0;
+  const purchasedClauseCount = 0;
+  const canonCount = 0;
+  const weaveCount = 0;
 
   return (
     <div className="space-y-4">
@@ -354,82 +362,82 @@ export function PrestigeTab() {
             <ProgressRow label="Logic Cores active" value={coresCount} max={6} />
           </LayerCard>
 
-          {/* Layer 7 — Omnipotence */}
+          {/* Layer 7 — Omnipotence (Bio-engineering) */}
           <LayerCard
             order={7}
             name="Omnipotence"
-            tagline="Two archetypes at once"
+            tagline="Create life; forge legions"
             icon="⚛️"
             unlocked={!!unlockedLayers.omnipotence}
             unlockText="3+ Logic Cores active"
             currencyName={`Instability: ${instability.toFixed(1)}/100 (peak ${peakInstability.toFixed(1)})`}
             onView={() => setShowOmnipotence(true)}
-            viewLabel="View Hybrids"
+            viewLabel="View Lab"
             viewIcon={<Atom className="w-3 h-3 mr-1" />}
           >
-            <ProgressRow label="Hybrid Lineages equipped" value={hybridsCount} max={HYBRID_LINEAGES.length} />
+            <ProgressRow label="Creatures designed" value={creaturesCount} max={20} />
+            <ProgressRow label="Legions formed" value={legionsCount} max={5} />
             <div className="text-[0.6rem] text-muted-foreground mt-1">
-              Watch instability — at 100 the run ends. Peak ≥ 80 unlocks Divinity.
+              Design creatures → combine into Legions. At instability 100, they go rogue. Peak ≥ 80 unlocks Divinity.
             </div>
           </LayerCard>
 
-          {/* Layer 8 — Divinity */}
+          {/* Layer 8 — Divinity (Divine Alliance) */}
           <LayerCard
             order={8}
             name="Divinity"
-            tagline="Prayer shapes the cosmos"
+            tagline="Alliances with minor gods"
             icon="⛪"
             unlocked={!!unlockedLayers.divinity}
             unlockText="Peak instability ≥ 80"
-            currencyName={`Prayer: ${formatNumber(prayer, 0)}`}
+            currencyName={`Alliances: ${alliedCount}/${MINOR_GODS.length}`}
             onView={() => setShowDivinityLayer(true)}
-            viewLabel="View Masks"
+            viewLabel="View Diplomacy"
             viewIcon={<Church className="w-3 h-3 mr-1" />}
           >
-            <ProgressRow label="Prayer Channels leveled (toward Infinity)" value={channelsLeveled} max={PRAYER_CHANNELS.length} />
+            <ProgressRow label="Alliances formed (toward Infinity)" value={alliedCount} max={2} />
+            <ProgressRow label="Gods at alliance threshold" value={godsAtThreshold} max={MINOR_GODS.length} />
             <div className="text-[0.6rem] text-muted-foreground mt-1">
-              {totalChannelLevels} total levels · Mask: {activeDivineMask || "none"} · Polarity: {activeWorshipPolarity || "none"}
+              Negotiate, trade, and form alliances. 2+ alliances unlocks Divine War.
             </div>
           </LayerCard>
 
-          {/* Layer 9 — Infinity */}
+          {/* Layer 9 — Infinity (Divine War) */}
           <LayerCard
             order={9}
             name="Infinity"
-            tagline="Echoes of past selves"
+            tagline="War against the Old Gods"
             icon="∞"
             unlocked={!!unlockedLayers.infinity}
-            unlockText="3+ Prayer channels + polarity"
-            currencyName={`Echoes: ${formatNumber(echoes, 0)}`}
+            unlockText="2+ alliances formed"
+            currencyName={`Divine Fragments: ${divineFragments}`}
             onView={() => setShowInfinity(true)}
-            viewLabel="View Echoes"
+            viewLabel="View Battles"
             viewIcon={<InfinityIcon className="w-3 h-3 mr-1" />}
           >
-            <ProgressRow label="Forks resolved (toward Eternity)" value={resolvedForkCount} max={FORK_SCENARIOS.length} />
-            <ProgressRow label="Debts repaid (of taken)" value={debtRepaidCount} max={Math.max(debtTakenCount, FUTURE_DEBT_TIERS.length)} />
+            <ProgressRow label="Old Gods defeated (toward Eternity)" value={oldGodsDefeated} max={OLD_GODS.length} />
             <div className="text-[0.6rem] text-muted-foreground mt-1">
-              {purchasedEchoCount}/{ECHO_TYPES.length} echoes purchased · {debtTakenCount - debtRepaidCount} active debt(s)
+              Deploy Legions, call Allies, defeat all 3 Old Gods to ascend.
             </div>
           </LayerCard>
 
-          {/* Layer 10 — Eternity */}
+          {/* Layer 10 — Eternity (Ascension) */}
           <LayerCard
             order={10}
             name="Eternity"
-            tagline="And the play begins again"
+            tagline="Create a new universe"
             icon="🌠"
             unlocked={!!unlockedLayers.eternity}
-            unlockText="All forks + all debt repaid"
-            currencyName={`Testament Clauses: ${formatNumber(testamentClauses, 0)} · Boons: ${cosmicBoonStacks}`}
+            unlockText="All 3 Old Gods defeated"
+            currencyName={`Universe slots: ${universeSlotsFilled}/${UNIVERSE_SLOTS.length} · Boons: ${cosmicBoonStacks}`}
             onView={() => setShowEternity(true)}
-            viewLabel="View Eternity"
+            viewLabel="View Ascension"
             viewIcon={<Star className="w-3 h-3 mr-1" />}
           >
-            <ProgressRow label="Testament Clauses enacted" value={purchasedClauseCount} max={TESTAMENT_CLAUSES.length} />
-            <ProgressRow label="Canonizations active" value={canonCount} max={CANONIZATIONS.length} />
-            <ProgressRow label="Permanence Weaves active" value={weaveCount} max={PERMANENCE_WEAVES.length} />
+            <ProgressRow label="Universe slots filled" value={universeSlotsFilled} max={UNIVERSE_SLOTS.length} />
+            <ProgressRow label="Gods kept in pantheon" value={keptGodsCount} max={alliedCount} />
             <div className="text-[0.6rem] text-muted-foreground mt-1">
-              {chosenEnding ? `Ending chosen: ${chosenEnding}` : "No ending chosen yet — choose Preserve or Reset to complete the layer."}
+              {chosenEnding ? `Ending chosen: ${chosenEnding}` : "Fill all 8 slots and choose Preserve or Reset to ascend."}
             </div>
           </LayerCard>
         </CardContent>

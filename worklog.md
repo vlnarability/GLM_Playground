@@ -1665,3 +1665,158 @@ All new state fields are included in the final `set({...})` call inside `tick()`
 3. Add Divine Market dividends to the main `divinityPerSecond` calc (currently the dividends are added directly to `divinity` in the tick — works, but bypasses the central helper).
 4. Add a playtest pass — open each modal, exercise the mini-game, verify the visual feedback matches the state changes.
 5. Consider hidden dormant seed harvest mechanic for Layer 4 (currently cosmetic).
+
+
+---
+
+# REBUILD-L7-L10 — New Narrative for Layers 7-10 (Bio-engineering, Divine Alliance, Divine War, Ascension) (2026-10-08)
+
+## Task
+Rebuild Layers 7-10 with a NEW narrative design: the CONFRONTATION with the Old Gods. The story moves from the player god's development (Layers 1-6) to the endgame confrontation. Each layer gets a distinct mini-game loop tied to the new story.
+
+## New Narrative
+- **Layer 7 — Bio-Engineering (Omnipotence redesign):** God CREATES life rather than guiding it. Design creatures with body type, diet, special ability → combine into Legions. Instability = genetic instability.
+- **Layer 8 — Divine Alliance (Divinity redesign):** Return to the main universe to gather allies. 6 minor god NPCs with personalities, power levels, demands, rewards. Form alliances, trade resources. Diplomacy Network replaces Prayer Router.
+- **Layer 9 — Divine War (Infinity redesign):** Direct combat with 3 Old God bosses. Turn-based battles across 3 phases (Skirmish, Siege, Final Stand). Deploy Legions + call Allies. Each victory grants a Divine Fragment (permanent power boost).
+- **Layer 10 — Ascension (Eternity redesign):** After defeating the Old Gods, the player god becomes one. Choose which minor gods to keep as pantheon. Create a new universe with 8 creation slots (Physics, Biology, Magic, Time, Space, Consciousness, Death, Rebirth). Choose Preserve (gallery mode) or Reset (stacking Cosmic Boon).
+
+## Files Changed
+
+### src/game/data/omnipotence.ts (full rewrite, ~330 lines)
+Replaced Hybrid Lineages with **Creature Lab** data:
+- 6 creature body types (Predator 🐅, Grazer 🦌, Flyer 🦅, Swimmer 🐙, Burrower 🦂, Psionic 🧠) — each with base attack/defense/speed and habitat affinity.
+- 4 creature diets (Carnivore 🥩, Herbivore 🌿, Omnivore 🍃, Void Eater 🌑) — each adds attack bonus and instability-per-second.
+- 6 special abilities (Regeneration 💚, Berserk 🔥, Carapace Shield 🛡️, Swarm Tactics 🐝, Venom Glands 🧪, Phase Shift 🌀) — defense/speed/attack-mult bonuses.
+- `Creature` interface: id, name, bodyType, diet, special, attack, defense, speed, createdAt.
+- `Legion` interface: id, name, creatureIds (up to 5), deployed flag.
+- `computeCreatureStats(body, diet, special)` → { attack, defense, speed }.
+- `legionBonus(creatures, legions, stance)` → aggregated prod/cap/EP/pop mult + instability/sec.
+- `legionPower(legion, creatures)` → { attack, defense, speed, count } used by Layer 9 battles.
+- `effectiveInstabilityRate(creatures, legions, stance)` → per-second genetic instability gain.
+- 3 Stances preserved (Contained/Balanced/Embraced) for instability scaling.
+- `isOmnipotenceComplete(peakInstability)` → peak ≥ 80 unlocks Layer 8.
+
+### src/game/data/divinity_layer.ts (full rewrite, ~210 lines)
+Replaced Prayer Channels/Masks/Polarities with **Divine Alliance** data:
+- 6 minor god NPCs: Aurelia (warm, power 55), Nyxar (cunning, 70), Thane (warlike, 80), Sylph (mystic, 50), Karnak (patient, 65), Veska (chaotic, 90). Each has personality, powerLevel, demand {resource, amount}, reward {resource, amount}, startingRelationship.
+- `allianceBonus(alliances, minorGods)` → scaled by god powerLevel (50 power = 1×, 100 power = 2× bonus).
+- `canFormAlliance(relationships, alliances, godId)` → relationship ≥ 60.
+- `isDivinityComplete(alliances)` → 2+ alliances unlocks Layer 9.
+- Backwards-compat shims: empty `prayerChannelBonus`, `divineMaskBonus`, `worshipPolarityBonus`, `prayerRate` (returns 0 bonuses) so legacy store code still compiles.
+
+### src/game/data/infinity.ts (full rewrite, ~225 lines)
+Replaced Echoes/Forks/Debts with **Divine War** data:
+- 3 Old God bosses: Mor'lok 🦷 (HP 600, weak to predator), Zephira 🌬️ (HP 800, weak to flyer), Thalos 🕸️ (HP 1000, weak to burrower). Each has 3 phases (skirmish/siege/final_stand) with hpThreshold.
+- `BattleState` interface: status (not_started/in_progress/won/lost), bossHp, bossMaxHp, phase, deployedLegionIds, calledAllyIds, turn, log.
+- `makeInitialBattleState(oldGodId)` factory.
+- `divineFragmentBonus(fragments)` → +5% prod, +3% cap, +2% EP, +3% pop per fragment.
+- `computePlayerAttack(deployedPowers, calledAllies, weakToBodyType)` → 1.5× damage if boss is weak to deployed body type.
+- `computeBossAttack(bossAttack, playerDefense)` → mitigated by 30% of player defense.
+- `phaseForHp(god, hp)` → returns current phase name.
+- `isInfinityComplete(oldGodBattles)` → all 3 Old Gods defeated.
+- Backwards-compat shims: empty `ECHO_TYPES`, `FORK_SCENARIOS`, `FUTURE_DEBT_TIERS` arrays + no-op `echoBonus`/`forkBonus`/`activeDebtBonus` helpers.
+
+### src/game/data/eternity.ts (full rewrite, ~250 lines)
+Replaced Testament Clauses/Canonizations/Weaves with **Universe Creation** data:
+- 8 creation slots: Physics ⚛️, Biology 🧬, Magic ✨, Time ⏳, Space 🌌, Consciousness 💭, Death 💀, Rebirth 🔄. Each has 2 options with distinct bonuses.
+- 2 Ending Choices preserved: Preserve Universe 🌠 (gallery mode) + Reset Universe 🔄 (requires all 8 slots filled; grants stacking Cosmic Boon).
+- `universeSlotBonus(rules)` → aggregated prod/cap/EP/pop/testament mult + filledCount.
+- `keptGodsBonus(keptGodIds)` → +5% prod, +3% cap, +4% EP, +5% pop per kept god.
+- `cosmicBoonBonus(stacks)` → +10% production per stack.
+- `isEternityComplete(chosenEnding, universeRules)` → preserve always works; reset requires 8 slots filled.
+- Backwards-compat shims: empty `TESTAMENT_CLAUSES`, `CANONIZATIONS`, `PERMANENCE_WEAVES` + no-op helpers.
+
+### src/game/state/types.ts (+35 lines)
+- 11 new GameState fields across Layers 7-10: `creatures`, `legions`, `geneticInstability`, `creatureDesignDraft`, `minorGods`, `godRelationships`, `alliances`, `oldGodBattles`, `divineFragments`, `universeRules` (8 slots), `keptGods`.
+- 9 new GameStore actions: `setCreatureDesignDraft`, `createCreature`, `addCreatureToLegion`, `removeCreatureFromLegion`, `createLegion`, `deleteLegion`, `negotiateWithGod`, `tradeWithGod`, `formAlliance`, `startOldGodBattle`, `deployLegionToBattle`, `callAllyToBattle`, `attackOldGod`, `setUniverseRule`, `toggleKeptGod`.
+- Legacy actions kept as stubs: `toggleHybridLineage`, `levelPrayerChannel`, `setDivineMask`, `setWorshipPolarity`, `purchaseEcho`, `resolveFork`, `takeFutureDebt`, `repayFutureDebt`, `purchaseTestamentClause`, `toggleCanonization`, `togglePermanenceWeave`.
+
+### src/game/state/store.ts (+~430 lines, total 3635→3920)
+- Imports: removed `HYBRID_LINEAGES`, `HYBRID_LINEAGE_MAP`; added creature/diet/special maps, `legionBonus`, `legionPower`, `computeCreatureStats`, `creatureInstabilityPerSec`, `MINOR_GODS`, `MINOR_GOD_MAP`, `OLD_GODS`, `OLD_GOD_MAP`, `makeInitialBattleState`, `divineFragmentBonus`, `computePlayerAttack`, `computeBossAttack`, `phaseForHp`, `UNIVERSE_SLOTS`, `universeSlotBonus`, `keptGodsBonus`, `BattleStatus` type.
+- `initialMetaState()` extended with all new fields; `minorGods` initialized as a copy of `MINOR_GODS`; `godRelationships` seeded from each god's `startingRelationship`; `oldGodBattles` seeded via `makeInitialBattleState` for each Old God; `universeRules` initialized as 8-null array.
+- **Tick changes:**
+  - Layer 7 instability now computed from `effectiveInstabilityRate(s.creatures, s.legions, activeStance)` instead of equipped hybrids.
+  - Layer 8 unlock: peak instability ≥ 80 (unchanged narrative trigger).
+  - Layer 9 unlock: `isDivinityComplete(s.alliances)` → 2+ alliances formed.
+  - Layer 10 unlock: `isInfinityComplete(s.oldGodBattles)` → all 3 Old Gods defeated.
+  - `layerProdBonus` / `layerCapBonus` / `layerPopBonus` now include `allianceB`, `fragmentB`, `universeB`, `keptB` contributions.
+  - `geneticInstability` set as alias of `instability` in tick.
+- **Prestige (triggerPrestige):**
+  - EP multiplier now includes `allianceEp`, `fragmentEp`, `universeEp`, `keptEp`.
+  - Layer 7-10 state persists appropriately: creatures/legions/minorGods/relationships/alliances/divineFragments/universeRules/keptGods persist; instability/battles/chosenEnding reset per-run.
+- **New action implementations** (15 total): creature design + legion management, diplomacy (negotiate/trade/ally with relationship thresholds), battle control (start/deploy/call/attack), universe creation (set rule + toggle kept god).
+- `chooseEnding` extended: Reset ending now requires all 8 universe slots filled before allowing the player to ascend.
+- `debugUnlockAll` cleaned up: removed legacy `enlightenmentUnlocked` etc. props; grants +200 Prayer + +200 Faith on debug.
+- **v9 migration**: persisted state adds all new fields with defaults. Persist version bumped 8 → 9.
+
+### src/components/game/modals/OmnipotenceModal.tsx (full rewrite, ~280 lines)
+- **Creation Lab** section: 3 pickers (Body Type / Diet / Special Ability), each showing icon + name + stat blurb. Live stat preview (ATK/DEF/SPD) computed from draft. Optional name input. "Create Creature" button.
+- **Creature Inventory**: grid of designed creatures with body icon, name, stats, "Add"/"Remove" button (contextual to selected legion).
+- **Legions**: list with name, count badge (e.g. 3/5), total power (ATK/DEF/SPD), per-creature badges. Click a legion to select it for adding creatures. New Legion button. Delete button.
+- Instability meter + 3 stances preserved.
+- Lock-state shows "Activate 3+ Logic Cores" hint.
+
+### src/components/game/modals/DivinityLayerModal.tsx (full rewrite, ~205 lines)
+- **Diplomacy Network overview**: shows 💎 Divinity, 🕯️ Prayer, ✨ Faith balances + alliance count + aggregated bonus badges.
+- **Relationship Web**: 2-column grid of 6 minor god cards. Each shows icon, name, title, personality badge (color-coded per personality), power level, description, relationship meter (0-100) with threshold marker at 60, trade info (demand → reward), and 3 action buttons: Negotiate (+5), Trade (+3 + resource exchange), Ally (requires relationship ≥ 60).
+- Lock-state shows "Peak instability ≥ 80" hint.
+
+### src/components/game/modals/InfinityModal.tsx (full rewrite, ~220 lines)
+- **Status overview**: defeated count, legions count, allies count, + Divine Fragment bonus badges.
+- **Old God Boss Cards**: 3 cards, each with icon, name, title, HP/ATK/weakness stats, boss HP bar (when active/won), phase badge, and contextual UI:
+  - Not started: "Begin Battle" button.
+  - In progress: deploy Legion toggles (with attack preview), call Ally toggles (with power level), Attack! button (disabled if no forces), recent battle log (last 6 entries).
+  - Won: green border + Defeated badge.
+- **Your Forces** summary card: lists all legions with attack values + all allied gods with power levels.
+- Lock-state shows "Form 2+ alliances" hint.
+
+### src/components/game/modals/EternityModal.tsx (full rewrite, ~190 lines)
+- **Universe Creation Slots**: 8 cards (Physics/Biology/Magic/Time/Space/Consciousness/Death/Rebirth), each with 2 option buttons (e.g. Physics: Slow Constants vs Fast Constants). Selected option highlighted. Slot icon, name, description per slot.
+- **Your Pantheon** section: grid of allied minor gods. Click to toggle keep/absorb. Counter shows N kept / M absorbed.
+- **Ending Choices**: Preserve Universe (always enabled) + Reset Universe (disabled until all 8 slots filled). Chosen ending shows Cosmic Boon stacks count.
+- Lock-state shows "Defeat all 3 Old Gods" hint.
+
+### src/components/game/tabs/PrestigeTab.tsx (+~40 lines)
+- Updated imports: removed `HYBRID_LINEAGES`, `PRAYER_CHANNELS`; added `CREATURE_BODY_TYPES`, `MINOR_GODS`, `OLD_GODS`, `UNIVERSE_SLOTS`, etc.
+- Updated state selectors for new fields (creatures, legions, alliances, godRelationships, divineFragments, oldGodBattles, universeRules, keptGods).
+- Updated Layer 7-10 LayerCards:
+  - Layer 7: tagline "Create life; forge legions", shows creatures/legions count progress rows.
+  - Layer 8: tagline "Alliances with minor gods", shows alliances/alliance-threshold progress rows.
+  - Layer 9: tagline "War against the Old Gods", shows Old Gods defeated progress row.
+  - Layer 10: tagline "Create a new universe", shows universe slots filled + kept gods progress rows.
+
+### src/game/data/prestigeLayers.ts (story rewrite for Layers 9-10)
+- Layer 9 ("omega" id) renamed from "Omega" → "Bio-Engineering" 🧬, tagline "Create life to fight the Old Gods", story describes the confrontation.
+- Layer 10 ("eternity" id) renamed from "Eternity" → "Ascension" 🌠, tagline "Forge a new universe of your own rules", story describes the choice to keep allies, define rules, and decide preserve vs reset.
+- (Layers 1-8 unchanged — they cover the development arc leading up to the confrontation.)
+
+### src/game/data/story.ts (story rewrite for unlock entries)
+- "omnipotence_unlocked": retitled "The Old Gods Stir" — describes the god sensing the Old Gods beyond its dimension and beginning to create life.
+- "divinity_unlocked": retitled "The Diplomacy Network" — describes seeking out the 6 minor gods by name to form alliances.
+- "infinity_unlocked": retitled "The War Council" — describes the 3 Old Gods (Mor'lok, Zephira, Thalos) and the battle mechanics (phases, weaknesses, Divine Fragments).
+- "eternity_unlocked": retitled "Universe Creation" — describes the choice to keep/absorb allies and the 8 universe slots.
+
+## Verification
+- `bun run lint`: **0 errors, 6 warnings** (all pre-existing in `upload/logic.js` vanilla JS reference file, untouched).
+- `curl -s -o /dev/null -w "%{http_code}" http://localhost:3000/`: **HTTP 200**.
+- `bunx tsc --noEmit`: **6 pre-existing errors** (ChallengeModal ChallengeEffects→Record ×2, stages.ts Record<StageId>, store.ts Partial+GameStore mismatch at line 400, store.ts null-index at line 1353 in pre-existing L1-6 trial realm code). All verified pre-existing — no NEW errors introduced by this work.
+- Dev server compiles cleanly; no runtime errors on page load.
+
+## Notes / Risks
+1. **Backwards-compat shims**: Legacy exports like `TESTAMENT_CLAUSES`, `ECHO_TYPES`, `PRAYER_CHANNELS`, `DIVINE_MASKS`, `WORSHIP_POLARITIES`, `HYBRID_LINEAGES` are kept as empty arrays/objects (or no-op helpers) so older code paths that may reference them don't break. The new modal UIs don't use these; they exist purely for migration safety.
+2. **Reset ending requires all 8 slots filled** — the `chooseEnding("reset")` action in the store explicitly checks `universeSlotsFilled >= UNIVERSE_SLOTS.length` and logs a rejection message if not met. The EternityModal also visually disables the Reset button until filled.
+3. **Divine Fragments are permanent** — they persist across prestige (the Old Gods are remembered as defeated across runs). This means players who beat Layer 9 once carry the +5%/+3%/+2%/+3% bonus forever. This is by design (matches the narrative of "permanent power boost" from the task spec).
+4. **Old God battle state resets per prestige run** — `oldGodBattles` is re-initialized via `makeInitialBattleState` for each Old God at prestige. So players can re-fight them in subsequent runs (the divine fragments stack, but the battles are replayable). This is the simplest interpretation; a more strict design might lock them once defeated. Easy to change later.
+5. **Trade resource routing**: `tradeWithGod` reads/writes `divinity`/`prayer`/`faith` from the store dynamically using `(s as any)[resource]`. This is type-safe enough at runtime (all three fields exist on GameState), but bypasses TS strictness. Acceptable for an internal action.
+6. **Relationship thresholds**: `RELATIONSHIP_ALLIANCE_THRESHOLD = 60`, `RELATIONSHIP_MAX = 100`. Negotiate gives +5, Trade gives +3 (so trading alone is slower but yields resources). A god at starting relationship 5 (Veska) requires 11 negotiates or 18 trades to ally — meaningful time investment for the most powerful ally.
+7. **God relationship persistence**: relationships persist across prestige runs (god memory). This is intentional — once you've built rapport with Aurelia, you don't lose it.
+8. **Universe Creation slots grant bonuses immediately** — even before choosing an ending, each filled slot applies its bonus to production/cap/EP/pop/etc. (computed live in `universeSlotBonus`). So players filling slots feel the impact right away.
+9. **Kept gods grant passive bonuses** — `keptGodsBonus` applies +5% prod per kept god. So keeping more allies = bigger permanent bonus for the new universe. Absorbing gods (not keeping them) is the narrative "their followers bring peace" but currently grants no mechanical bonus — could be added later.
+10. **Battle log** is capped at 6 entries (shift-on-overflow). Each entry shows turn number + damage dealt/taken. The most recent 6 entries are visible in the modal.
+
+## Next Actions
+1. **Playtest**: Open each modal, exercise the full gameplay loop (design creature → form legion → form alliance → fight Old God → fill universe slots → choose ending). Verify visual feedback matches state changes.
+2. **Tune battle balance**: Mor'lok (HP 600) may be too easy or too hard depending on early-game creature stats. The `computePlayerAttack` formula (legion attack × 1.5 if weak to body type + ally powerLevel × 0.5) hasn't been playtested. Tune HP/attack values if needed.
+3. **Tune relationship gain rates**: Negotiate +5 might be too slow or too fast. The 2-alliance unlock threshold for Layer 9 means players need ~2×12 = 24 negotiates minimum if starting at 30 (Aurelia) and 5 (Veska). Verify this feels right.
+4. **Wire Divine Fragment display in Header** — currently the fragment count only shows in the InfinityModal and PrestigeTab. Could add a Header stat badge for the +5%×N production bonus visibility.
+5. **Add combat weakness hint UI** — currently the Old God's `weakness` field is shown in their card text, but the UI doesn't visually highlight when the player has deployed the matching body type. Could add a "Bonus damage active!" callout.

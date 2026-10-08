@@ -306,10 +306,11 @@ export const STORY_ENTRIES: StoryEntry[] = [
   },
   {
     id: "omnipotence_unlocked",
-    title: "Two Souls in One Body",
-    body: "Three logic cores hum in unison. The god, looking down at its many selves, wonders: what if two of them " +
-      "could be one? What if the predator and the nurturer, the deep and the winged, could share a single throne? " +
-      "Omnipotence begins in this dangerous question. Instability is the price.",
+    title: "The Old Gods Stir",
+    body: "Three logic cores hum in unison. Beyond your private dimension, you feel them — the Old Gods, " +
+      "ancient and hungry. You cannot defeat them with the life you have merely guided. You must CREATE life. " +
+      "Splicing DNA, designing bodies, you begin to forge creatures of terrible purpose. Each one adds " +
+      "instability; at 100, they will go rogue. This is the price of an army.",
     stage: "meta",
     layer: "Omnipotence",
     trigger: "Activate 3+ Logic Cores (Layer 7 unlocked)",
@@ -317,10 +318,11 @@ export const STORY_ENTRIES: StoryEntry[] = [
   },
   {
     id: "divinity_unlocked",
-    title: "The Prayer Becomes a River",
-    body: "Instability climbs. The hybrid god, stretched between two natures, learns a new shape of devotion: not faith " +
-      "poured upward, but prayer drawn inward. The population itself becomes a chant. Each soul a note. The god puts on " +
-      "a mask, chooses a polarity, and begins to listen to itself pray.",
+    title: "The Diplomacy Network",
+    body: "Genetic instability has reached its peak. Your creations are powerful, but you cannot face the " +
+      "Old Gods alone. You return to the main universe and seek out the other minor gods — Aurelia, Nyxar, " +
+      "Thane, Sylph, Karnak, Veska. Each has a personality, a power, a price. Negotiate, trade, and form " +
+      "alliances. Two allies, and the war begins.",
     stage: "meta",
     layer: "Divinity",
     trigger: "Peak instability ≥ 80 (Layer 8 unlocked)",
@@ -328,24 +330,27 @@ export const STORY_ENTRIES: StoryEntry[] = [
   },
   {
     id: "infinity_unlocked",
-    title: "The Loop Closes",
-    body: "Three channels sing. A polarity is set. The god, suddenly, remembers everything that has not yet happened — " +
-      "every run still to come, every fork not yet walked, every debt not yet owed. Infinity is the moment the loop " +
-      "closes back on itself, and the god becomes its own ancestor.",
+    title: "The War Council",
+    body: "Two alliances sealed. The Old Gods notice you now. Mor'lok the Hollow Hunger. Zephira the Wail " +
+      "of Endings. Thalos the Root Beneath All. Each has phases, weaknesses, an HP bar. Deploy your Legions; " +
+      "call your allies; strike. Each victory yields a Divine Fragment — a permanent power boost. Defeat all " +
+      "three, and you will ascend.",
     stage: "meta",
     layer: "Infinity",
-    trigger: "3+ Prayer channels + polarity chosen (Layer 9 unlocked)",
+    trigger: "2+ alliances formed (Layer 9 unlocked)",
     category: "layer",
   },
   {
     id: "eternity_unlocked",
-    title: "And the Play Begins Again",
-    body: "All forks resolved. All debts repaid. The god sits at the end of every road at once and discovers the last " +
-      "secret of the ten ages: there was never a destination, only the journey. Eternity is not a length. " +
-      "It is the choice to begin again — or to hold the moment forever.",
+    title: "Universe Creation",
+    body: "All three Old Gods lie broken at your feet. The player god becomes one. Now you choose: which " +
+      "of your allies do you keep as your eternal pantheon, and which do you absorb back into the cosmos? " +
+      "Then, the final act — define the rules of a new universe. Physics. Biology. Magic. Time. Space. " +
+      "Consciousness. Death. Rebirth. Eight slots. Preserve this universe in gallery mode, or reset and " +
+      "begin again with a Cosmic Boon that stacks with each new cosmos you forge.",
     stage: "meta",
     layer: "Eternity",
-    trigger: "All forks + all debt repaid (Layer 10 unlocked)",
+    trigger: "All 3 Old Gods defeated (Layer 10 unlocked)",
     category: "layer",
   },
 ];

@@ -238,36 +238,51 @@ export interface GameState {
   logicCoreTimers: Record<string, number>; // coreId -> last-fired game-time
   showSingularity: boolean;
 
-  // Layer 7 — Omnipotence
-  equippedHybrids: Record<string, boolean>; // hybridId -> equipped
+  // Layer 7 — Omnipotence (Bio-engineering)
+  equippedHybrids: Record<string, boolean>; // LEGACY: kept for migration; unused by new logic
   activeOmnipotenceStance: string; // "contained" | "balanced" | "embraced"
-  instability: number; // 0-100; run ends at 100
+  instability: number; // 0-100; creatures go rogue at 100 — run ends
   peakInstability: number; // peak this run (for unlock check)
   showOmnipotence: boolean;
+  // NEW: Creature Lab
+  creatures: Array<import("../data/omnipotence").Creature>;
+  legions: Array<import("../data/omnipotence").Legion>;
+  geneticInstability: number; // alias of instability (kept for clarity)
+  creatureDesignDraft: { bodyType: string; diet: string; special: string; name: string } | null;
 
-  // Layer 8 — Divinity (the layer; not the resource)
-  prayer: number; // currency for prayer channels
-  prayerChannelLevels: Record<string, number>; // channelId -> level
-  activeDivineMask: string | null; // one active mask
-  activeWorshipPolarity: string | null; // one active polarity
+  // Layer 8 — Divinity (the layer; not the resource) — Divine Alliance
+  prayer: number; // currency (preserved for legacy refs)
+  prayerChannelLevels: Record<string, number>; // LEGACY: kept for migration
+  activeDivineMask: string | null; // LEGACY: kept for migration
+  activeWorshipPolarity: string | null; // LEGACY: kept for migration
   showDivinityLayer: boolean;
+  // NEW: Divine Alliance
+  minorGods: Array<import("../data/divinity_layer").MinorGod>;
+  godRelationships: Record<string, number>; // godId -> 0-100
+  alliances: Record<string, boolean>; // godId -> allied
 
-  // Layer 9 — Infinity
-  echoes: number; // currency for echoes
-  purchasedEchoes: Record<string, boolean>; // echoId -> purchased
-  resolvedForks: Record<string, string>; // forkId -> chosen branchId
-  takenFutureDebts: Record<string, boolean>; // debtId -> taken this run
-  repaidFutureDebts: Record<string, boolean>; // debtId -> repaid
+  // Layer 9 — Infinity — Divine War
+  echoes: number; // LEGACY: kept for migration
+  purchasedEchoes: Record<string, boolean>; // LEGACY
+  resolvedForks: Record<string, string>; // LEGACY
+  takenFutureDebts: Record<string, boolean>; // LEGACY
+  repaidFutureDebts: Record<string, boolean>; // LEGACY
   showInfinity: boolean;
+  // NEW: Divine War
+  oldGodBattles: Record<string, import("../data/infinity").BattleState>;
+  divineFragments: number;
 
-  // Layer 10 — Eternity
-  testamentClauses: number; // currency for testament clauses
-  purchasedTestamentClauses: Record<string, boolean>; // clauseId -> purchased
-  activeCanonizations: Record<string, boolean>; // canonId -> active
-  activePermanenceWeaves: Record<string, boolean>; // weaveId -> active
+  // Layer 10 — Eternity — Ascension
+  testamentClauses: number; // LEGACY: kept for migration (used as currency)
+  purchasedTestamentClauses: Record<string, boolean>; // LEGACY
+  activeCanonizations: Record<string, boolean>; // LEGACY
+  activePermanenceWeaves: Record<string, boolean>; // LEGACY
   chosenEnding: string | null; // "preserve" | "reset" | null
   cosmicBoonStacks: number; // +1 per "Reset Universe" ending chosen
   showEternity: boolean;
+  // NEW: Universe Creation
+  universeRules: Array<string | null>; // 8 slots: physics, biology, magic, time, space, consciousness, death, rebirth
+  keptGods: string[]; // minor god ids kept as part of the new pantheon
 
   // UI state
   currentTab: TabId;
@@ -412,30 +427,49 @@ export interface GameStore extends GameState {
   toggleRelicLoadout: (relicId: string) => void;
   toggleLogicCore: (coreId: string) => void;
 
-  // Layer 7 — Omnipotence
+  // Layer 7 — Omnipotence (Bio-engineering)
   setShowOmnipotence: (v: boolean) => void;
-  toggleHybridLineage: (hybridId: string) => void;
+  toggleHybridLineage: (hybridId: string) => void; // LEGACY stub
   setOmnipotenceStance: (stanceId: string) => void;
+  // NEW: Creature Lab actions
+  setCreatureDesignDraft: (draft: { bodyType: string; diet: string; special: string; name: string } | null) => void;
+  createCreature: () => void;
+  addCreatureToLegion: (creatureId: string, legionId: string) => void;
+  removeCreatureFromLegion: (creatureId: string, legionId: string) => void;
+  createLegion: (name: string) => void;
+  deleteLegion: (legionId: string) => void;
 
-  // Layer 8 — Divinity (layer)
+  // Layer 8 — Divinity (layer) — Divine Alliance
   setShowDivinityLayer: (v: boolean) => void;
-  levelPrayerChannel: (channelId: string) => void;
-  setDivineMask: (maskId: string | null) => void;
-  setWorshipPolarity: (polarityId: string | null) => void;
+  levelPrayerChannel: (channelId: string) => void; // LEGACY stub
+  setDivineMask: (maskId: string | null) => void; // LEGACY stub
+  setWorshipPolarity: (polarityId: string | null) => void; // LEGACY stub
+  // NEW: Divine Alliance actions
+  negotiateWithGod: (godId: string) => void;
+  tradeWithGod: (godId: string) => void;
+  formAlliance: (godId: string) => void;
 
-  // Layer 9 — Infinity
+  // Layer 9 — Infinity — Divine War
   setShowInfinity: (v: boolean) => void;
-  purchaseEcho: (echoId: string) => void;
-  resolveFork: (forkId: string, branchId: string) => void;
-  takeFutureDebt: (debtId: string) => void;
-  repayFutureDebt: (debtId: string) => void;
+  purchaseEcho: (echoId: string) => void; // LEGACY stub
+  resolveFork: (forkId: string, branchId: string) => void; // LEGACY stub
+  takeFutureDebt: (debtId: string) => void; // LEGACY stub
+  repayFutureDebt: (debtId: string) => void; // LEGACY stub
+  // NEW: Divine War actions
+  startOldGodBattle: (oldGodId: string) => void;
+  deployLegionToBattle: (oldGodId: string, legionId: string) => void;
+  callAllyToBattle: (oldGodId: string, godId: string) => void;
+  attackOldGod: (oldGodId: string) => void;
 
-  // Layer 10 — Eternity
+  // Layer 10 — Eternity — Ascension
   setShowEternity: (v: boolean) => void;
-  purchaseTestamentClause: (clauseId: string) => void;
-  toggleCanonization: (canonId: string) => void;
-  togglePermanenceWeave: (weaveId: string) => void;
+  purchaseTestamentClause: (clauseId: string) => void; // LEGACY stub
+  toggleCanonization: (canonId: string) => void; // LEGACY stub
+  togglePermanenceWeave: (weaveId: string) => void; // LEGACY stub
   chooseEnding: (endingId: "preserve" | "reset") => void;
+  // NEW: Universe Creation actions
+  setUniverseRule: (slotIndex: number, optionId: string) => void;
+  toggleKeptGod: (godId: string) => void;
 
   // Theme customization
   setStageTheme: (id: string) => void;

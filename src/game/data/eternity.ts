@@ -1,207 +1,135 @@
 // ===========================================================================
-// LAYER 10 — ETERNITY
+// LAYER 10 — ETERNITY (ASCENSION)
 // ===========================================================================
-// The final layer. The god becomes an author of permanence. Enact Testament
-// Clauses (permanent bonuses, cost Testament Clauses currency), Canonize
-// events/archetypes as eternal, weave Permanence across resets, and finally
-// choose an Ending: Preserve the universe (gallery mode) or Reset it (fresh
-// start + stacking Cosmic Boon). Choosing any ending completes the layer.
+// After defeating the Old Gods, the player god becomes one. Choose which minor
+// gods to keep as allies (they become your pantheon), and which to absorb
+// (their followers bring peace to the universe). Create new universes — the
+// "Reset" ending. The Testament Forge becomes "Universe Creation" — define the
+// rules of your new universe across 8 creation slots: Physics, Biology, Magic,
+// Time, Space, Consciousness, Death, Rebirth. Choosing any ending completes
+// the layer.
 // ===========================================================================
 
-// ----- Testament Clauses (8) -----
-// Permanent bonuses purchased with Testament Clauses currency (earned at
-// prestige when this layer is unlocked).
-export interface TestamentClause {
-  id: string;
+// ----- Universe Creation Slots (8) -----
+// Each slot defines a rule of the new universe. Filling all 8 unlocks the
+// "Reset" ending option.
+export type UniverseSlotId =
+  | "physics"
+  | "biology"
+  | "magic"
+  | "time"
+  | "space"
+  | "consciousness"
+  | "death"
+  | "rebirth";
+
+export interface UniverseSlot {
+  id: UniverseSlotId;
   name: string;
   icon: string;
   desc: string;
-  cost: number; // Testament Clauses
+  options: UniverseSlotOption[];
+}
+
+export interface UniverseSlotOption {
+  id: string;
+  label: string;
+  desc: string;
   bonus: {
     productionMult?: number;
     capMult?: number;
     epMult?: number;
     popGrowthMult?: number;
-    testamentMult?: number; // multiplies Testament Clauses earned on prestige
+    testamentMult?: number;
   };
 }
 
-export const TESTAMENT_CLAUSES: TestamentClause[] = [
+export const UNIVERSE_SLOTS: UniverseSlot[] = [
   {
-    id: "clause_bounty",
-    name: "Clause of Bounty",
-    icon: "🌾",
-    desc: "+25% production. The cosmos yields freely.",
-    cost: 5,
-    bonus: { productionMult: 0.25 },
+    id: "physics",
+    name: "Physics",
+    icon: "⚛️",
+    desc: "The laws of matter and energy.",
+    options: [
+      { id: "phys_slow", label: "Slow Constants", desc: "+20% cap — heavy atoms, slow light.", bonus: { capMult: 0.20 } },
+      { id: "phys_fast", label: "Fast Constants", desc: "+25% production — eager reactions.", bonus: { productionMult: 0.25 } },
+    ],
   },
   {
-    id: "clause_vastness",
-    name: "Clause of Vastness",
-    icon: "🌌",
-    desc: "+30% capacity. The vessel is endless.",
-    cost: 6,
-    bonus: { capMult: 0.30 },
-  },
-  {
-    id: "clause_remembrance",
-    name: "Clause of Remembrance",
-    icon: "📜",
-    desc: "+40% EP. Every run is remembered.",
-    cost: 8,
-    bonus: { epMult: 0.40 },
-  },
-  {
-    id: "clause_multitude",
-    name: "Clause of the Multitude",
-    icon: "👥",
-    desc: "+30% population growth. The throngs bloom.",
-    cost: 6,
-    bonus: { popGrowthMult: 0.30 },
-  },
-  {
-    id: "clause_recurrence",
-    name: "Clause of Recurrence",
-    icon: "🔄",
-    desc: "+30% Testament Clauses per prestige. The loop deepens.",
-    cost: 12,
-    bonus: { testamentMult: 0.30 },
-  },
-  {
-    id: "clause_eternal_throne",
-    name: "Clause of the Eternal Throne",
-    icon: "👑",
-    desc: "+15% to production, cap, EP, pop. The balanced summit.",
-    cost: 15,
-    bonus: {
-      productionMult: 0.15,
-      capMult: 0.15,
-      epMult: 0.15,
-      popGrowthMult: 0.15,
-    },
-  },
-  {
-    id: "clause_cosmic_boon",
-    name: "Clause of the Cosmic Boon",
-    icon: "🌠",
-    desc: "+50% production. Stacks with each Reset Universe ending (+10% per stack).",
-    cost: 20,
-    bonus: { productionMult: 0.50 },
-  },
-  {
-    id: "clause_omega",
-    name: "Clause of Omega",
-    icon: "Ω",
-    desc: "+20% to all four and +20% Testament gain. The final word.",
-    cost: 30,
-    bonus: {
-      productionMult: 0.20,
-      capMult: 0.20,
-      epMult: 0.20,
-      popGrowthMult: 0.20,
-      testamentMult: 0.20,
-    },
-  },
-];
-
-export const TESTAMENT_CLAUSE_MAP: Record<string, TestamentClause> = Object.fromEntries(
-  TESTAMENT_CLAUSES.map((c) => [c.id, c])
-);
-
-// ----- Canonizations (3) -----
-// Declare that an event / archetype / system is permanent across resets.
-// Each grants a small permanent bonus when active.
-export interface Canonization {
-  id: string;
-  name: string;
-  icon: string;
-  desc: string;
-  cost: number; // Testament Clauses
-  bonus: {
-    productionMult?: number;
-    capMult?: number;
-    epMult?: number;
-    popGrowthMult?: number;
-  };
-}
-
-export const CANONIZATIONS: Canonization[] = [
-  {
-    id: "canon_first_spark",
-    name: "Canonize the First Spark",
-    icon: "✨",
-    desc: "Declare the first cell eternal. +20% production, +10% pop.",
-    cost: 10,
-    bonus: { productionMult: 0.20, popGrowthMult: 0.10 },
-  },
-  {
-    id: "canon_locked_archetype",
-    name: "Canonize the Lineage",
+    id: "biology",
+    name: "Biology",
     icon: "🧬",
-    desc: "Your dominant archetype persists across resets. +25% EP.",
-    cost: 12,
-    bonus: { epMult: 0.25 },
+    desc: "The rules of life.",
+    options: [
+      { id: "bio_fertile", label: "Fertile Genesis", desc: "+30% pop growth — life blooms readily.", bonus: { popGrowthMult: 0.30 } },
+      { id: "bio_complex", label: "Complex Forms", desc: "+30% EP — fewer but mightier species.", bonus: { epMult: 0.30 } },
+    ],
   },
   {
-    id: "canon_galactic_throne",
-    name: "Canonize the Galactic Throne",
-    icon: "👑",
-    desc: "The galactic throne is eternal. +30% capacity, +15% production.",
-    cost: 18,
-    bonus: { capMult: 0.30, productionMult: 0.15 },
+    id: "magic",
+    name: "Magic",
+    icon: "✨",
+    desc: "Whether magic flows in the new world.",
+    options: [
+      { id: "magic_high", label: "High Magic", desc: "+35% production — magic is everywhere.", bonus: { productionMult: 0.35 } },
+      { id: "magic_low", label: "Subtle Magic", desc: "+10% to all four — magic is rare but potent.", bonus: { productionMult: 0.10, capMult: 0.10, epMult: 0.10, popGrowthMult: 0.10 } },
+    ],
+  },
+  {
+    id: "time",
+    name: "Time",
+    icon: "⏳",
+    desc: "The shape of time.",
+    options: [
+      { id: "time_loop", label: "Cyclical Time", desc: "+30% Testament gain — echoes return.", bonus: { testamentMult: 0.30 } },
+      { id: "time_linear", label: "Linear Time", desc: "+25% production — once-burned, no return.", bonus: { productionMult: 0.25 } },
+    ],
+  },
+  {
+    id: "space",
+    name: "Space",
+    icon: "🌌",
+    desc: "The size and shape of space.",
+    options: [
+      { id: "space_vast", label: "Vast Cosmos", desc: "+40% cap — endless room.", bonus: { capMult: 0.40 } },
+      { id: "space_dense", label: "Dense Cosmos", desc: "+20% production — worlds close together.", bonus: { productionMult: 0.20 } },
+    ],
+  },
+  {
+    id: "consciousness",
+    name: "Consciousness",
+    icon: "💭",
+    desc: "Whether minds awaken in the new cosmos.",
+    options: [
+      { id: "cons_awake", label: "Awakened Minds", desc: "+30% EP — every soul a star.", bonus: { epMult: 0.30 } },
+      { id: "cons_dream", label: "Dreaming Minds", desc: "+15% production — minds wander.", bonus: { productionMult: 0.15 } },
+    ],
+  },
+  {
+    id: "death",
+    name: "Death",
+    icon: "💀",
+    desc: "The role of death in the new world.",
+    options: [
+      { id: "death_release", label: "Release at Death", desc: "+20% EP — the dead return their gifts.", bonus: { epMult: 0.20 } },
+      { id: "death_persist", label: "Persistence", desc: "+25% cap — nothing is lost.", bonus: { capMult: 0.25 } },
+    ],
+  },
+  {
+    id: "rebirth",
+    name: "Rebirth",
+    icon: "🔄",
+    desc: "Whether souls return.",
+    options: [
+      { id: "rebirth_yes", label: "Cycle of Rebirth", desc: "+30% Testament gain — past lives echo.", bonus: { testamentMult: 0.30 } },
+      { id: "rebirth_no", label: "Single Life", desc: "+30% pop growth — each life is precious.", bonus: { popGrowthMult: 0.30 } },
+    ],
   },
 ];
 
-export const CANONIZATION_MAP: Record<string, Canonization> = Object.fromEntries(
-  CANONIZATIONS.map((c) => [c.id, c])
-);
-
-// ----- Permanence Weaves (3) -----
-// Pin a law/mode/route through resets. Permanent passive bonus.
-export interface PermanenceWeave {
-  id: string;
-  name: string;
-  icon: string;
-  desc: string;
-  cost: number; // Testament Clauses
-  bonus: {
-    productionMult?: number;
-    capMult?: number;
-    epMult?: number;
-    popGrowthMult?: number;
-  };
-}
-
-export const PERMANENCE_WEAVES: PermanenceWeave[] = [
-  {
-    id: "weave_law",
-    name: "Weave the Law",
-    icon: "⚖️",
-    desc: "Pin your most-enacted Divine Law through resets. +20% production.",
-    cost: 8,
-    bonus: { productionMult: 0.20 },
-  },
-  {
-    id: "weave_route",
-    name: "Weave the Route",
-    icon: "🛤️",
-    desc: "Pin your Foresight Route through resets. +20% EP.",
-    cost: 10,
-    bonus: { epMult: 0.20 },
-  },
-  {
-    id: "weave_mode",
-    name: "Weave the Mode",
-    icon: "🎶",
-    desc: "Pin your Worship Mode through resets. +15% capacity, +15% pop.",
-    cost: 10,
-    bonus: { capMult: 0.15, popGrowthMult: 0.15 },
-  },
-];
-
-export const PERMANENCE_WEAVE_MAP: Record<string, PermanenceWeave> = Object.fromEntries(
-  PERMANENCE_WEAVES.map((w) => [w.id, w])
-);
+export const UNIVERSE_SLOT_MAP: Record<UniverseSlotId, UniverseSlot> = Object.fromEntries(
+  UNIVERSE_SLOTS.map((s) => [s.id, s])
+) as Record<UniverseSlotId, UniverseSlot>;
 
 // ----- Ending Choices (2) -----
 // Once chosen, the layer is complete. Preserve = gallery mode (continue
@@ -220,13 +148,13 @@ export const ENDING_CHOICES: EndingChoice[] = [
     id: "preserve",
     name: "Preserve Universe",
     icon: "🌠",
-    desc: "Enter gallery mode — continue indefinitely with all bonuses intact. The story does not end.",
+    desc: "Enter gallery mode — watch your universe flourish indefinitely with all bonuses intact.",
   },
   {
     id: "reset",
     name: "Reset Universe",
     icon: "🔄",
-    desc: "Begin a fresh universe from the first cell. Gain a permanent Cosmic Boon (+10% all production) that stacks with each reset.",
+    desc: "Begin a fresh universe from the first cell. Gain a permanent Cosmic Boon (+10% all production) that stacks with each reset. Requires all 8 universe slots filled.",
   },
 ];
 
@@ -237,81 +165,58 @@ export const ENDING_CHOICE_MAP: Record<EndingChoiceId, EndingChoice> = Object.fr
 // ----- Helpers -----
 
 /**
- * Aggregated bonus from all purchased Testament Clauses.
+ * Aggregated bonus from all filled universe slots.
+ * Each slot grants its chosen option's bonus (or 0 if unfilled).
  */
-export function testamentClauseBonus(
-  purchased: Record<string, boolean>
+export function universeSlotBonus(
+  rules: Array<string | null>
 ): {
   productionMult: number;
   capMult: number;
   epMult: number;
   popGrowthMult: number;
   testamentMult: number;
+  filledCount: number;
 } {
   let productionMult = 0;
   let capMult = 0;
   let epMult = 0;
   let popGrowthMult = 0;
   let testamentMult = 0;
-  for (const c of TESTAMENT_CLAUSES) {
-    if (!purchased[c.id]) continue;
-    productionMult += c.bonus.productionMult || 0;
-    capMult += c.bonus.capMult || 0;
-    epMult += c.bonus.epMult || 0;
-    popGrowthMult += c.bonus.popGrowthMult || 0;
-    testamentMult += c.bonus.testamentMult || 0;
+  let filledCount = 0;
+  for (let i = 0; i < UNIVERSE_SLOTS.length; i++) {
+    const slot = UNIVERSE_SLOTS[i];
+    const chosenId = rules[i];
+    if (!chosenId) continue;
+    const opt = slot.options.find((o) => o.id === chosenId);
+    if (!opt) continue;
+    filledCount += 1;
+    productionMult += opt.bonus.productionMult || 0;
+    capMult += opt.bonus.capMult || 0;
+    epMult += opt.bonus.epMult || 0;
+    popGrowthMult += opt.bonus.popGrowthMult || 0;
+    testamentMult += opt.bonus.testamentMult || 0;
   }
-  return { productionMult, capMult, epMult, popGrowthMult, testamentMult };
+  return { productionMult, capMult, epMult, popGrowthMult, testamentMult, filledCount };
 }
 
 /**
- * Aggregated bonus from all active Canonizations.
+ * Bonus from kept gods (they become your pantheon). Each kept god grants
+ * a small permanent bonus.
  */
-export function canonizationBonus(
-  active: Record<string, boolean>
-): {
+export function keptGodsBonus(keptGodIds: string[]): {
   productionMult: number;
   capMult: number;
   epMult: number;
   popGrowthMult: number;
 } {
-  let productionMult = 0;
-  let capMult = 0;
-  let epMult = 0;
-  let popGrowthMult = 0;
-  for (const c of CANONIZATIONS) {
-    if (!active[c.id]) continue;
-    productionMult += c.bonus.productionMult || 0;
-    capMult += c.bonus.capMult || 0;
-    epMult += c.bonus.epMult || 0;
-    popGrowthMult += c.bonus.popGrowthMult || 0;
-  }
-  return { productionMult, capMult, epMult, popGrowthMult };
-}
-
-/**
- * Aggregated bonus from all woven Permanence Weaves.
- */
-export function permanenceWeaveBonus(
-  active: Record<string, boolean>
-): {
-  productionMult: number;
-  capMult: number;
-  epMult: number;
-  popGrowthMult: number;
-} {
-  let productionMult = 0;
-  let capMult = 0;
-  let epMult = 0;
-  let popGrowthMult = 0;
-  for (const w of PERMANENCE_WEAVES) {
-    if (!active[w.id]) continue;
-    productionMult += w.bonus.productionMult || 0;
-    capMult += w.bonus.capMult || 0;
-    epMult += w.bonus.epMult || 0;
-    popGrowthMult += w.bonus.popGrowthMult || 0;
-  }
-  return { productionMult, capMult, epMult, popGrowthMult };
+  const count = keptGodIds.length;
+  return {
+    productionMult: count * 0.05,
+    capMult: count * 0.03,
+    epMult: count * 0.04,
+    popGrowthMult: count * 0.05,
+  };
 }
 
 /**
@@ -323,7 +228,56 @@ export function cosmicBoonBonus(stacks: number): number {
 
 /**
  * Layer completion: an Ending has been chosen (preserve or reset).
+ * Reset requires all 8 universe slots to be filled.
  */
-export function isEternityComplete(chosenEnding: string | null | undefined): boolean {
-  return chosenEnding === "preserve" || chosenEnding === "reset";
+export function isEternityComplete(
+  chosenEnding: string | null | undefined,
+  universeRules: Array<string | null>
+): boolean {
+  if (chosenEnding === "preserve") return true;
+  if (chosenEnding === "reset") {
+    const { filledCount } = universeSlotBonus(universeRules);
+    return filledCount >= UNIVERSE_SLOTS.length;
+  }
+  return false;
+}
+
+// ----- Legacy compatibility shims -----
+// The original Layer 10 had Testament Clauses, Canonizations, Permanence
+// Weaves. These are preserved as empty arrays / no-op helpers so that any
+// references in older code don't break the build.
+
+export const TESTAMENT_CLAUSES: any[] = [];
+export const TESTAMENT_CLAUSE_MAP: Record<string, any> = {};
+export const CANONIZATIONS: any[] = [];
+export const CANONIZATION_MAP: Record<string, any> = {};
+export const PERMANENCE_WEAVES: any[] = [];
+export const PERMANENCE_WEAVE_MAP: Record<string, any> = {};
+
+export function testamentClauseBonus(_purchased: Record<string, boolean>): {
+  productionMult: number;
+  capMult: number;
+  epMult: number;
+  popGrowthMult: number;
+  testamentMult: number;
+} {
+  return { productionMult: 0, capMult: 0, epMult: 0, popGrowthMult: 0, testamentMult: 0 };
+}
+
+export function canonizationBonus(_active: Record<string, boolean>): {
+  productionMult: number;
+  capMult: number;
+  epMult: number;
+  popGrowthMult: number;
+} {
+  return { productionMult: 0, capMult: 0, epMult: 0, popGrowthMult: 0 };
+}
+
+export function permanenceWeaveBonus(_active: Record<string, boolean>): {
+  productionMult: number;
+  capMult: number;
+  epMult: number;
+  popGrowthMult: number;
+} {
+  return { productionMult: 0, capMult: 0, epMult: 0, popGrowthMult: 0 };
 }
